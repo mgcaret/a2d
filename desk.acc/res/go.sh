@@ -33,7 +33,7 @@ do_make all
 
 # Verify original and output match
 echo "Verifying diffs:"
-verify "calculator"
+cecho yellow "calculator N/A - patches applied"
 verify "show_text_file"
 verify "date"
 verify "puzzle"
