@@ -3,7 +3,6 @@
         .include "apple2.inc"
         .include "../inc/apple2.inc"
         .include "../inc/prodos.inc"
-        .include "../inc/auxmem.inc"
 
         .include "../mgtk.inc"
         .include "../desktop.inc" ; redraw icons after window move; font; glyphs
@@ -11,50 +10,29 @@
 
         .org $800
 
-;;; ==================================================
+;;; ============================================================
 
         jmp     copy2aux
 
 
 stash_stack:  .byte   $00
 
-;;; ==================================================
+;;; ============================================================
 ;;; MLI Call Param Blocks
 
 filename:
         PASCAL_STRING "MD.SYSTEM"
 
-.proc open_params
-params: .byte   3
-name:   .addr   filename
-buffer: .addr   $0900
-ref_num:.byte   0
-.endproc
-
-.proc set_mark_params
-params: .byte   2
-ref_num:.byte   0
-pos:    .byte   $03,$00,$00
-.endproc
-
-.proc write_params
-params: .byte   4
-ref_num:.byte   0
-buffer: .addr   write_buffer
-request:.word   sizeof_write_buffer
-trans:  .word   0
-.endproc
-
-.proc close_params
-params: .byte    1
-ref_num:.byte   0
-.endproc
+        DEFINE_OPEN_PARAMS open_params, filename, $900
+        DEFINE_SET_MARK_PARAMS set_mark_params, 3
+        DEFINE_WRITE_PARAMS write_params, write_buffer, sizeof_write_buffer
+        DEFINE_CLOSE_PARAMS close_params
 
 write_buffer:
         .byte   0,0
         sizeof_write_buffer := * - write_buffer
 
-;;; ==================================================
+;;; ============================================================
 
 .proc copy2aux
 
@@ -86,7 +64,7 @@ write_buffer:
         jmp     XFER
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Write date into MD.SYSTEM file and exit the DA
 
 .proc save_date_and_exit
@@ -127,7 +105,7 @@ skip:   ldx     stash_stack     ; exit the DA
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 start_da:
         sta     ALTZPON
@@ -135,7 +113,7 @@ start_da:
         lda     LCBANK1
         jmp     init_window
 
-;;; ==================================================
+;;; ============================================================
 ;;; Param blocks
 
         ;; The following 7 rects are iterated over to identify
@@ -273,7 +251,7 @@ textfont:   .addr   DEFAULT_FONT
 nextwinfo:   .addr   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Initialize window, unpack the date.
 
 init_window:
@@ -309,7 +287,7 @@ init_window:
         MGTK_CALL MGTK::FlushEvents
         ;; fall through
 
-;;; ==================================================
+;;; ============================================================
 ;;; Input loop
 
 .proc input_loop
@@ -328,20 +306,20 @@ init_window:
         lda     event_params::modifiers
         bne     input_loop
         lda     event_params::key
-        cmp     #KEY_RETURN
+        cmp     #CHAR_RETURN
         bne     :+
         jmp     on_ok
 
-:       cmp     #KEY_ESCAPE
+:       cmp     #CHAR_ESCAPE
         bne     :+
         jmp     on_cancel
-:       cmp     #KEY_LEFT
+:       cmp     #CHAR_LEFT
         beq     on_key_left
-        cmp     #KEY_RIGHT
+        cmp     #CHAR_RIGHT
         beq     on_key_right
-        cmp     #KEY_DOWN
+        cmp     #CHAR_DOWN
         beq     on_key_down
-        cmp     #KEY_UP
+        cmp     #CHAR_UP
         bne     input_loop
 
 on_key_up:
@@ -381,7 +359,7 @@ update_selection:
         jmp     input_loop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc on_click
         MGTK_CALL MGTK::FindWindow, event_params::xcoord
@@ -412,7 +390,7 @@ hit_target_jump_table:
         .addr   on_field_click, on_field_click, on_field_click
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc on_ok
         MGTK_CALL MGTK::PaintRect, ok_button_rect
@@ -517,7 +495,7 @@ gosub:  jsr     $1000           ; self modified
 hit_rect_index:
         .byte   0
 
-;;; ==================================================
+;;; ============================================================
 
 increment_table:
         .addr   0, increment_day, increment_month, increment_year
@@ -583,7 +561,7 @@ decrement_year:
         sta     year
 :       jmp     prepare_year_string
 
-;;; ==================================================
+;;; ============================================================
 
 .proc prepare_day_string
         lda     day
@@ -629,7 +607,7 @@ month_name_table:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Tear down the window and exit
 
 dialog_result:  .byte   0
@@ -673,7 +651,7 @@ skip:   jmp     dest
         sizeof_routine := * - routine
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Figure out which button was hit (if any).
 ;;; Index returned in X.
 
@@ -710,7 +688,7 @@ done:   pla
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Params for the display
 
 border_rect:
@@ -743,7 +721,7 @@ penwidth: .byte   1
 penheight: .byte   1
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Render the window contents
 
 draw_window:
@@ -809,7 +787,7 @@ draw_window:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Highlight selected field
 ;;; Previously selected field in A, newly selected field at top of stack.
 
@@ -850,7 +828,7 @@ fill_month:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Delay
 
 .proc delay
@@ -867,7 +845,7 @@ loop2:  sbc     #1
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Save/restore Zero Page
 
 .proc save_zp
@@ -891,7 +869,7 @@ loop:   lda     zp_buffer,x
 zp_buffer:
         .res    256, 0
 
-;;; ==================================================
+;;; ============================================================
 ;;; Convert number to two ASCII digits (in A, X)
 
 .proc number_to_ascii

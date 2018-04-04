@@ -2,8 +2,6 @@
 
         .include "apple2.inc"
         .include "../inc/apple2.inc"
-        .include "../inc/auxmem.inc"
-        .include "../inc/applesoft.inc"
         .include "../inc/prodos.inc"
 
         .include "../mgtk.inc"
@@ -14,14 +12,14 @@
 
 adjust_txtptr := $B1
 
-;;; ==================================================
+;;; ============================================================
 ;;; Start of the code
 
 start:  jmp     copy2aux
 
 save_stack:  .byte   0
 
-;;; ==================================================
+;;; ============================================================
 ;;; Duplicate the DA (code and data) to AUX memory,
 ;;; then invoke the code in AUX.
 
@@ -52,7 +50,7 @@ save_stack:  .byte   0
         jmp     XFER
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc exit_da
         lda     LCBANK1
@@ -62,7 +60,7 @@ save_stack:  .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 call_init:
         jmp     init
@@ -94,7 +92,7 @@ call_init:
         jsr     check_visibility_and_draw_window
 
         MGTK_CALL MGTK::GetWinPort, getwinport_params
-        MGTK_CALL MGTK::SetPort, port_params
+        MGTK_CALL MGTK::SetPort, grafport
         rts
 
 .proc routine
@@ -108,7 +106,7 @@ call_init:
         sizeof_routine := * - routine
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 
         ;; Set when the client area is offscreen and
@@ -131,7 +129,7 @@ offscreen_flag:
         sta     offscreen_flag
 
         MGTK_CALL MGTK::GetWinPort, getwinport_params
-        MGTK_CALL MGTK::SetPort, port_params
+        MGTK_CALL MGTK::SetPort, grafport
         lda     getwinport_params_window_id
         cmp     #da_window_id
         bne     :+
@@ -139,7 +137,7 @@ offscreen_flag:
 :       rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Call Params (and other data)
 
         ;; The following params blocks overlap for data re-use
@@ -185,7 +183,7 @@ goaway:  .byte   0
 
 .proc getwinport_params
 window_id:     .byte   0
-        .addr   port_params
+        .addr   grafport
 .endproc
         getwinport_params_window_id := getwinport_params::window_id
 
@@ -197,7 +195,7 @@ flag:   .byte   MGTK::zp_preserve
 flag:   .byte   MGTK::zp_overwrite
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Button Definitions
 
         button_width := 17
@@ -492,7 +490,7 @@ tall_button_bitmap:             ; bitmap for '+' button
         .byte   px(%1000000),px(%0000000),px(%0000000)
 
 
-;;; ==================================================
+;;; ============================================================
 ;;; Calculation state
 
 saved_stack:
@@ -505,7 +503,7 @@ calc_n: .byte   $00             ; negative?
 calc_g: .byte   $00             ; high bit set if last input digit
 calc_l: .byte   $00             ; input length
 
-;;; ==================================================
+;;; ============================================================
 ;;; Miscellaneous param blocks
 
 .proc background_box_params
@@ -610,11 +608,10 @@ base:   .word   16
 
 farg:   .byte   $00,$00,$00,$00,$00,$00
 
-.proc title_bar_decoration      ; Params for MGTK::PaintBits
-left:   .word   115             ; overwritten
-top:    .word   $FFF7           ; overwritten
-mapbits:.addr   pixels
-mapwidth: .byte   1
+.proc title_bar_bitmap      ; Params for MGTK::PaintBits
+viewloc:        DEFINE_POINT 115, AS_WORD -9, viewloc
+mapbits:        .addr   pixels
+mapwidth:       .byte   1
 reserved:       .byte   0
 maprect:        DEFINE_RECT 0, 0, 6, 5
         ;;  (not part of struct, but not referenced outside)
@@ -626,22 +623,21 @@ pixels: .byte   px(%1000001)
         .byte   px(%1001001)
 .endproc
 
-        ;; param block for a QUERY_SCREEN and SET_STATE calls, and ref'd in GetWinPort call
-.proc port_params
+.proc grafport
 viewloc:        DEFINE_POINT 0, 0
-mapbits:   .word   0
-mapwidth: .word   0
+mapbits:        .word   0
+mapwidth:       .word   0
 cliprect:       DEFINE_RECT 0, 0, 0, 0
-pattern:.res    8, 0
-colormasks:      .byte  0, 0
-penloc: DEFINE_POINT 0, 0
-penwidth: .byte   0
-penheight: .byte   0
-penmode:   .byte   0
-textback:  .byte   0
-textfont:   .addr   0
+pattern:        .res    8, 0
+colormasks:     .byte   0, 0
+penloc:         DEFINE_POINT 0, 0
+penwidth:       .byte   0
+penheight:      .byte   0
+penmode:        .byte   0
+textback:       .byte   0
+textfont:       .addr   0
 .endproc
-        .assert * - port_params = 36, error
+        .assert * - grafport = 36, error
 
         .byte   0               ; ???
 
@@ -651,14 +647,14 @@ textfont:   .addr   0
 
         ;; params for MGTK::SetPortBits when decorating title bar
 .proc screen_port
-left:   .word   0
-top:    .word   menu_bar_height
-mapbits:   .word   MGTK::screen_mapbits
-mapwidth: .word   MGTK::screen_mapwidth
-hoff:   .word   0
-voff:   .word   0
-width:  .word   screen_width - 1
-height: .word   screen_height - menu_bar_height - 2
+left:           .word   0
+top:            .word   menu_bar_height
+mapbits:        .word   MGTK::screen_mapbits
+mapwidth:       .word   MGTK::screen_mapwidth
+hoff:           .word   0
+voff:           .word   0
+width:          .word   screen_width - 1
+height:         .word   screen_height - menu_bar_height - 2
 .endproc
 
 .proc penmode_normal
@@ -677,42 +673,42 @@ penmode:   .byte   MGTK::notpenXOR
         default_top := 60
 
 .proc winfo
-window_id:     .byte   da_window_id
-options:  .byte   MGTK::option_go_away_box
-title:  .addr   window_title
-hscroll:.byte   MGTK::scroll_option_none
-vscroll:.byte   MGTK::scroll_option_none
-hthumbmax: .byte   0
-hthumbpos: .byte   0
-vthumbmax: .byte   0
-vthumbpos: .byte   0
-status: .byte   0
-reserved:       .byte 0
-mincontwidth:     .word   window_width
-mincontlength:     .word   window_height
-maxcontwidth:     .word   window_width
-maxcontlength:     .word   window_height
-left:   .word   default_left
-top:    .word   default_top
-mapbits:   .addr   MGTK::screen_mapbits
-mapwidth: .word   MGTK::screen_mapwidth
+window_id:      .byte   da_window_id
+options:        .byte   MGTK::option_go_away_box
+title:          .addr   window_title
+hscroll:        .byte   MGTK::scroll_option_none
+vscroll:        .byte   MGTK::scroll_option_none
+hthumbmax:      .byte   0
+hthumbpos:      .byte   0
+vthumbmax:      .byte   0
+vthumbpos:      .byte   0
+status:         .byte   0
+reserved:       .byte   0
+mincontwidth:   .word   window_width
+mincontlength:  .word   window_height
+maxcontwidth:   .word   window_width
+maxcontlength:  .word   window_height
+left:           .word   default_left
+top:            .word   default_top
+mapbits:        .addr   MGTK::screen_mapbits
+mapwidth:       .word   MGTK::screen_mapwidth
 cliprect:       DEFINE_RECT 0, 0, window_width, window_height
-pattern:.res    8, $FF
+pattern:        .res    8, $FF
 colormasks:     .byte   MGTK::colormask_and, MGTK::colormask_or
-penloc: DEFINE_POINT 0, 0
-penwidth: .byte   1
-penheight: .byte   1
-penmode:   .byte   0
-textback:  .byte   $7f
-textfont:   .addr   DEFAULT_FONT
-nextwinfo:   .addr   0
+penloc:         DEFINE_POINT 0, 0
+penwidth:       .byte   1
+penheight:      .byte   1
+penmode:        .byte   0
+textback:       .byte   $7f
+textfont:       .addr   DEFAULT_FONT
+nextwinfo:      .addr   0
 .endproc
 openwindow_params_top := winfo::top
 
 window_title:
         PASCAL_STRING "Calc"
 
-;;; ==================================================
+;;; ============================================================
 ;;; DA Init
 
 init:   sta     ALTZPON
@@ -720,8 +716,8 @@ init:   sta     ALTZPON
         lda     LCBANK1
         MGTK_CALL MGTK::SetZP1, preserve_zp_params
         MGTK_CALL MGTK::OpenWindow, winfo
-        MGTK_CALL MGTK::InitPort, port_params
-        MGTK_CALL MGTK::SetPort, port_params     ; set clipping bounds?
+        MGTK_CALL MGTK::InitPort, grafport
+        MGTK_CALL MGTK::SetPort, grafport     ; set clipping bounds?
         MGTK_CALL MGTK::FlushEvents
 
         jsr     reset_buffer2
@@ -793,7 +789,7 @@ input_loop:
         jsr     on_key_press
         jmp     input_loop
 
-;;; ==================================================
+;;; ============================================================
 ;;; On Click
 
 on_click:
@@ -852,14 +848,14 @@ loop:   lda     routine,x
         jsr     redraw_screen_and_window
         rts
 
-;;; ==================================================
+;;; ============================================================
 ;;; On Key Press
 
 .proc on_key_press
         lda     event_params::modifiers
         bne     bail
         lda     event_params::key
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         bne     trydel
         lda     calc_p
         bne     clear           ; empty state?
@@ -867,7 +863,7 @@ loop:   lda     routine,x
         beq     exit            ; if so, exit DA
 clear:  lda     #'C'            ; otherwise turn Escape into Clear
 
-trydel: cmp     #$7F            ; Delete?
+trydel: cmp     #CHAR_DELETE    ; Delete?
         beq     :+
         cmp     #$60            ; lowercase range?
         bcc     :+
@@ -878,7 +874,7 @@ bail:
 
 rts1:  rts                     ; used by next proc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Try to map a click to a button
 
 ;;; If a button was clicked, carry is set and accum has key char
@@ -1011,7 +1007,7 @@ miss:   clc
 .endproc
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Handle Key
 
 ;;; Accumulator is set to key char. Also used by
@@ -1403,7 +1399,7 @@ done:   lda     button_state                    ; high bit set if button down
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Value Display
 
 .proc reset_buffer1
@@ -1465,7 +1461,7 @@ end:    rts
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw the window contents (background, buttons)
 
 .proc draw_background
@@ -1519,7 +1515,7 @@ loop:   ldy     #0
         jmp     loop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw the title bar decoration
 
 draw_title_bar:
@@ -1529,24 +1525,24 @@ draw_title_bar:
         lda     winfo::left
         clc
         adc     #offset_left
-        sta     title_bar_decoration::left
+        sta     title_bar_bitmap::viewloc::xcoord
         bcc     :+
         inx
-:       stx     title_bar_decoration::left+1
+:       stx     title_bar_bitmap::viewloc::xcoord+1
         ldx     winfo::top+1
         lda     winfo::top
         sec
         sbc     #offset_top
-        sta     title_bar_decoration::top
+        sta     title_bar_bitmap::viewloc::ycoord
         bcs     :+
         dex
-:       stx     title_bar_decoration::top+1
+:       stx     title_bar_bitmap::viewloc::ycoord+1
         MGTK_CALL MGTK::SetPortBits, screen_port ; set clipping rect to whole screen
-        MGTK_CALL MGTK::PaintBits, title_bar_decoration     ; Draws decoration in title bar
+        MGTK_CALL MGTK::PaintBits, title_bar_bitmap     ; Draws decoration in title bar
         lda     #da_window_id
         sta     getwinport_params::window_id
         MGTK_CALL MGTK::GetWinPort, getwinport_params
-        MGTK_CALL MGTK::SetPort, port_params
+        MGTK_CALL MGTK::SetPort, grafport
         MGTK_CALL MGTK::ShowCursor
         jsr     display_buffer2
         rts
@@ -1570,11 +1566,18 @@ draw_title_bar:
 .endproc
 
         ;; Following proc is copied to $B1
+        save_org := *
 .proc adjust_txtptr_copied
+        .org $B1
+        dummy_addr := $EA60
+
 loop:   inc     TXTPTR
         bne     :+
         inc     TXTPTR+1
-:       lda     $EA60           ; this ends up being aligned on TXTPTR
+
+        .assert * + 1 = TXTPTR, error, "misaligned routine"
+:       lda     dummy_addr      ; this ends up being aligned on TXTPTR
+
         cmp     #'9'+1          ; after digits?
         bcs     end
         cmp     #' '            ; space? keep going
@@ -1585,7 +1588,8 @@ loop:   inc     TXTPTR
         sbc     #$D0            ; carry set if successful
 end:    rts
 .endproc
-        sizeof_adjust_txtptr_copied := * - adjust_txtptr_copied
+        .org save_org + .sizeof(adjust_txtptr_copied)
+        sizeof_adjust_txtptr_copied := .sizeof(adjust_txtptr_copied)
 
 
 CALL_FLOAT:

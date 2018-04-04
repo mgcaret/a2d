@@ -2,15 +2,14 @@
 
         .include "apple2.inc"
         .include "../inc/apple2.inc"
-        .include "../inc/auxmem.inc"
         .include "../inc/prodos.inc"
         .include "../mgtk.inc"
         .include "../desktop.inc"
         .include "../macros.inc"
 
-;;; ==================================================
+;;; ============================================================
 ;;; DeskTop - the actual application
-;;; ==================================================
+;;; ============================================================
 
 INVOKER          := $290         ; Invoke other programs
 INVOKER_FILENAME := $280         ; File to invoke (PREFIX must be set)
@@ -18,360 +17,42 @@ INVOKER_FILENAME := $280         ; File to invoke (PREFIX must be set)
         dummy0000 := $0000         ; overwritten by self-modified code
         dummy1234 := $1234         ; overwritten by self-modified code
 
-.macro MGTK_RELAY_CALL call, addr
-    .if .paramcount > 1
-        yax_call MGTK_RELAY, (call), (addr)
-    .else
-        yax_call MGTK_RELAY, (call), 0
-    .endif
-.endmacro
+        screen_width := 560
+        screen_height := 192
 
-;;; ==================================================
+;;; ============================================================
 ;;; Segment loaded into AUX $851F-$BFFF (follows MGTK)
-;;; ==================================================
+;;; ============================================================
 .proc desktop_aux
 
         .org $851F
 
-;;; ==================================================
-;;; This chunk of code appears to be used by one or more
-;;; of the dynamically loaded segments.
+;;; ============================================================
+;;; This chunk of code appears to be used by one of
+;;; the dynamically loaded segments.
 
-        .byte   $03
-        .addr    $85E9
+        .include "ovl0.inc"
 
-L8522:  php
-        lda     $E904,x         ; winfo7::mapbits ???
-        sta     $09
-        ldy     #$14
-        ldx     #$00
-L852C:  lda     ($08),y
-        sta     L8590,x
-        iny
-        inx
-        cpx     #$04
-        bne     L852C
-        ldy     #$1C
-        ldx     #$00
-L853B:  lda     ($08),y
-        sta     L8594,x
-        iny
-        inx
-        cpx     #$04
-        bne     L853B
-        ldy     #$03
-        lda     ($06),y
-        sec
-        sbc     L8590
-        sta     ($06),y
-        iny
-        lda     ($06),y
-        sbc     L8591
-        sta     ($06),y
-        iny
-        lda     ($06),y
-        sec
-        sbc     L8592
-        sta     ($06),y
-        iny
-        lda     ($06),y
-        sbc     L8593
-        sta     ($06),y
-        ldy     #$03
-        lda     ($06),y
-        clc
-        adc     L8594
-        sta     ($06),y
-        iny
-        lda     ($06),y
-        adc     L8595
-        sta     ($06),y
-        iny
-        lda     ($06),y
-        clc
-        adc     L8596
-        sta     ($06),y
-        iny
-        lda     ($06),y
-        adc     L8597
-        sta     ($06),y
-        jsr     $83A5
-        rts
-
-L8590:  .byte   $24
-L8591:  .byte   $00
-L8592:  .byte   $23
-L8593:  .byte   $00
-L8594:  .byte   $00
-L8595:  .byte   $00
-L8596:  .byte   $00
-L8597:  .byte   $00
-
-        ldax    #0
-L859C:  sta     $D409,x
-        sta     $D401,x
-        sta     $D40D
-        inx
-        cpx     #$04
-        bne     L859C
-        lda     #$0A
-        sta     $D40D
-        sta     $D40F
-
-        MGTK_RELAY_CALL MGTK::SetPort, $D401
-        rts
-
-        addr_call $6B17, $1A39
-        ldx     $D5CA
-        txs
-        rts
-
-        addr_call $6B17, $1A56
-        ldx     $D5CA
-        txs
-        rts
-
-        addr_call $6B17, $1A71
-        ldx     $D5CA
-        txs
-        rts
-
-        cmp     #$27
-        bne     L85F2
-        addr_call $6B17, $1B22
-        ldx     $D5CA
-        txs
-        jmp     L8625
-
-L85F2:  cmp     #$45
-        bne     L8604
-        addr_call $6B17, $1B3B
-        ldx     $D5CA
-        txs
-        jmp     L8625
-
-L8604:  cmp     #$52
-        bne     L8616
-        addr_call $6B17, $1B5B
-        ldx     $D5CA
-        txs
-        jmp     L8625
-
-L8616:  cmp     #$57
-        bne     L8625
-        addr_call $6B17, $1B7C
-        ldx     $D5CA
-        txs
-L8625:  MGTK_RELAY_CALL MGTK::HiliteMenu, winfo18_port ; ???
-        rts
-
-        addr_call $6B17, $1B9C
-        ldx     $D5CA
-        txs
-        MGTK_RELAY_CALL MGTK::HiliteMenu, winfo18_port ; ???
-        rts
-
-        addr_call $6B17, $1BBF
-        ldx     $D5CA
-        txs
-        MGTK_RELAY_CALL MGTK::HiliteMenu, winfo18_port ; ???
-        rts
-
-        sta     L8737
-        sty     L8738
-        and     #$F0
-        sta     online_params_unit_num
-        sta     ALTZPOFF
-        MLI_CALL ON_LINE, online_params
-        sta     ALTZPON
-        beq     L867B
-L8672:  pha
-        dec     $EF8A
-        dec     $EF88
-        pla
-        rts
-
-L867B:  lda     online_params_buffer
-        beq     L8672
-        jsr     $8388      ; into dynamically loaded code???
-        jsr     DESKTOP_ALLOC_ICON ; AUX > MAIN call???
-        ldy     L8738
-        sta     $D464,y
-        asl     a
-        tax
-        copy16  $F13A,x, $06
-        ldx     #$00
-        ldy     #$09
-        lda     #' '
-L869E:  sta     ($06),y
-        iny
-        inx
-        cpx     #$12
-        bne     L869E
-        ldy     #$09
-        lda     online_params_buffer
-        and     #$0F
-        sta     online_params_buffer
-        sta     ($06),y
-        ldx     #$00
-        ldy     #$0B
-L86B6:  lda     online_params_buffer+1,x
-        cmp     #$41            ; convert to lowercase ???
-        bcc     L86C4
-        cmp     #$5F
-        bcs     L86C4
-        clc
-        adc     #$20
-L86C4:  sta     ($06),y
-        iny
-        inx
-        cpx     online_params_buffer
-        bne     L86B6
-        ldy     #9
-        lda     ($06),y
-        clc
-        adc     #2              ; increase length by 2 (spaces) ???
-        sta     ($06),y
-        lda     L8737           ; type?
-        and     #$0F
-
-        cmp     #$04
-        bne     L86ED
-        ldy     #icon_entry_offset_iconbits
-        lda     #<$14B4            ; $14B4 ???
-        sta     ($06),y
-        iny
-        lda     #>$14B4
-        sta     ($06),y
-        jmp     L870A
-
-L86ED:  cmp     #$0B
-        bne     L86FF
-        ldy     #icon_entry_offset_iconbits
-        lda     #<$1470            ; $1470 ???
-        sta     ($06),y
-        iny
-        lda     #>$1470
-        sta     ($06),y
-        jmp     L870A
-
-L86FF:  ldy     #icon_entry_offset_iconbits
-        lda     #<$1440            ; $1440 ???
-        sta     ($06),y
-        iny
-        lda     #>$1440
-        sta     ($06),y
-
-L870A:  ldy     #icon_entry_offset_win_type
-        lda     #0
-        sta     ($06),y
-        inc     L8738
-        lda     L8738
-        asl     a
-        asl     a
-        tax
-        ldy     #icon_entry_offset_iconx
-:       lda     L8739,x
-        sta     ($06),y
-        inx
-        iny
-        cpy     #7
-        bne     :-
-        ldx     $EF8A
-        dex
-        ldy     #0
-        lda     ($06),y
-        sta     $EF8B,x
-        jsr     $83A5
-        return  #0
-
-L8737:  .byte   $60             ; file type ???
-L8738:  .byte   $04
-L8739:  .byte   $00,$00,$00,$00
-
-L873D:  DEFINE_POINT 500, 16
-        DEFINE_POINT 500, 41
-        DEFINE_POINT 500, 66
-        DEFINE_POINT 500, 91
-        DEFINE_POINT 500, 116
-
-        DEFINE_POINT 440, 16
-        DEFINE_POINT 440, 41
-        DEFINE_POINT 440, 66
-        DEFINE_POINT 440, 91
-        DEFINE_POINT 440, 116
-        DEFINE_POINT 440, 141
-
-        DEFINE_POINT 400, 16
-        DEFINE_POINT 400, 41
-        DEFINE_POINT 400, 66
-
-.proc online_params
-count:  .byte   2
-unit_num:       .byte   $60     ; Slot 6 Drive 1
-data_buffer:    .addr   online_params_buffer
-.endproc
-        online_params_unit_num := online_params::unit_num
-
-        ;; Per ProDOS TRM this should be 256 bytes!
-online_params_buffer:
-        .byte   $0B
-        .byte   "GRAPHICS.TK",$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$C8
-
-;;; ==================================================
+;;; ============================================================
 
         .assert * = $8800, error, "Entry point mismatch"
-        .include "font.inc"
+        .include "inc/font.inc"
 
-;;; ==================================================
+;;; ============================================================
 
-        ;; ???
-
-L8C83:  .byte   $00,$00,$00,$00,$77,$30,$01
-        .byte   $00,$00,$7F,$00,$00,$7F,$00,$00
-        .byte   $00,$00,$00,$7A,$00,$00,$00,$00
-        .byte   $00,$14,$55,$2A,$00,$7F,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$01,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $00,$00,$00,$00,$00,$00,$00,$00
-        .byte   $0E,$00,$00,$07,$00,$00,$00,$00
-        .byte   $00,$03,$18,$00,$00,$00,$00,$00
-        .byte   $00,$00,$0E,$00,$00,$00,$00,$00
-
-        .assert * = $8D02, error, "Segment length mismatch"
+        .assert * = $8D03, error, "Segment length mismatch"
         PAD_TO $8E00
 
-;;; ==================================================
+;;; ============================================================
 ;;; Entry point for "DESKTOP"
-;;; ==================================================
+;;; ============================================================
 
         .assert * = DESKTOP, error, "DESKTOP entry point must be at $8E00"
 
         jmp     DESKTOP_DIRECT
 
 
-;;; ==================================================
+;;; ============================================================
 
 .macro MGTK_RELAY2_CALL call, addr
     .if .paramcount > 1
@@ -483,12 +164,12 @@ light_pattern:
         .byte   %10111011
         .byte   $FF
 
-;;; ==================================================
+;;; ============================================================
 ;;; Icon (i.e. file, volume) details
 
 num_icons:  .byte   0
 icon_table: .res    127, 0      ; index into icon_ptrs
-icon_ptrs:  .res    256, 0      ; addresses of icon details (in $ED00)
+icon_ptrs:  .res    256, 0      ; addresses of icon details
 
 has_highlight:                  ; 1 = has highlight, 0 = no highlight
         .byte   0
@@ -503,7 +184,7 @@ highlight_list:                 ; selected icons
 drag_outline_buffer:
         .res    680, 0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc peekevent_params
 kind:   .byte   0               ; spills into next block
@@ -515,9 +196,6 @@ mousey: .word   0
 which_area:     .byte   0
 window_id:      .byte   0
 .endproc
-
-        screen_width := 560
-        screen_height := 192
 
 .proc grafport
 viewloc:        DEFINE_POINT 0, 0, viewloc
@@ -567,7 +245,7 @@ notpenOR_2:     .byte   5
 notpenXOR_2:    .byte   6
 notpenBIC_2:    .byte   7
 
-;;; ==================================================
+;;; ============================================================
 ;;; DESKTOP command jump table
 
 desktop_jump_table:
@@ -639,7 +317,7 @@ dispatch:
         jsr     dummy0000
 
         tay
-        ldx     #$03
+        ldx     #3
 L9409:  pla
         sta     $06,x
         dex
@@ -656,7 +334,7 @@ xcoord: .word   0
 ycoord: .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; ADD_ICON IMPL
 
 .proc ADD_ICON_IMPL
@@ -691,14 +369,14 @@ sub:    ldx     num_icons       ; ???
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; HIGHLIGHT_ICON IMPL
 
 .proc HIGHLIGHT_ICON_IMPL
         ldx     num_icons
         beq     bail1
         dex
-        ldy     #$00
+        ldy     #0
         lda     ($06),y
 L945E:  cmp     icon_table,x
         beq     L9469
@@ -710,7 +388,7 @@ bail1:  return  #1
 L9469:  asl     a
         tax
         copy16  icon_ptrs,x, $06
-        ldy     #$01
+        ldy     #1
         lda     ($06),y
         bne     L947E
         return  #2
@@ -729,7 +407,7 @@ L948A:  cmp     highlight_list,x
 
 bail3:  return  #3
 
-L9498:  lda     #$01
+L9498:  lda     #1
         sta     has_highlight
 L949D:  ldx     highlight_count
         ldy     #0
@@ -747,7 +425,7 @@ L949D:  ldx     highlight_count
         return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; UNHILIGHT_ICON IMPL
 
 .proc UNHIGHLIGHT_ICON_IMPL
@@ -789,7 +467,7 @@ done:   jsr     L9F98
         return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $04 IMPL
 
@@ -860,20 +538,22 @@ L9584:  lda     #0
 done:   return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $0E IMPL
 
 .proc L958F
+        ptr := $6
+
         ldy     #0
-        lda     ($06),y
+        lda     (ptr),y
         asl     a
         tax
-        copy16  icon_ptrs,x, $06
+        copy16  icon_ptrs,x, ptr
         jmp     LA39D
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $05 IMPL
 
@@ -919,7 +599,7 @@ L9648:  lda     icon_table,x
 L9670:  inx
         cpx     num_icons
         bne     L9648
-        ldx     #$00
+        ldx     #0
         txa
         pha
 L967A:  lda     buffer,x
@@ -937,7 +617,7 @@ L9681:  sta     icon
         jmp     L967A
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $06 IMPL
 
@@ -950,7 +630,7 @@ L9696:  .byte   0
 L9697:  lda     num_icons
         sta     L9696
 L969D:  ldx     L9696
-        cpx     #$00
+        cpx     #0
         beq     L96CF
         dec     L9696
         dex
@@ -970,7 +650,7 @@ L969D:  ldx     L9696
 L96CF:  return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; CLOSE_WINDOW IMPL
 
 .proc CLOSE_WINDOW_IMPL
@@ -1003,7 +683,7 @@ L96E5:  dec     L96D6
         ldx     num_icons
         jsr     LA2E3
         dec     num_icons
-        lda     #$00
+        lda     #0
         ldx     num_icons
         sta     icon_table,x
         ldy     #1
@@ -1011,7 +691,7 @@ L96E5:  dec     L96D6
         sta     ($08),y
         lda     has_highlight
         beq     L9758
-        ldx     #$00
+        ldx     #0
         ldy     #0
 L972B:  lda     ($08),y
         cmp     highlight_list,x
@@ -1027,20 +707,20 @@ L973B:  lda     ($08),y
         dec     highlight_count
         lda     highlight_count
         bne     L9750
-        lda     #$00
+        lda     #0
         sta     has_highlight
-L9750:  lda     #$00
+L9750:  lda     #0
         ldx     highlight_count
         sta     highlight_list,x
 L9758:  jmp     L96DD
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $08 IMPL
 
 .proc L975B
-        ldx     #$00
+        ldx     #0
         txa
         tay
 L975F:  sta     ($06),y
@@ -1061,7 +741,7 @@ L976B:  lda     highlight_list,x
 L977A:  return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; FIND_ICON IMPL
 
 .proc FIND_ICON_IMPL
@@ -1083,7 +763,7 @@ start:  ldy     #3
         copy16  $06, $08
 
         ;; ???
-        ldy     #$05
+        ldy     #5
         lda     ($06),y
         sta     L97F5
         MGTK_CALL MGTK::MoveTo, moveto_params2
@@ -1130,7 +810,7 @@ L97F5:  .byte   0
 L97F6:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $0A IMPL
 
@@ -1210,17 +890,17 @@ L98A2:  lda     L982E
         jmp     L9845
 
 L98AC:  lda     highlight_count
-        cmp     #$15
-        bcc     L98B6
+        cmp     #$15            ; max number of draggable items?
+        bcc     :+
         jmp     L9852
 
-L98B6:  copy16  #drag_outline_buffer, $08
+:       copy16  #drag_outline_buffer, $08
         lda     has_highlight
-        bne     L98C8
+        bne     :+
         lda     #$03
         jmp     L9C65
 
-L98C8:  lda     highlight_list
+:       lda     highlight_list
         jsr     L9EB4
         stax    $06
         ldy     #icon_entry_offset_win_type
@@ -1228,7 +908,7 @@ L98C8:  lda     highlight_list
         and     #icon_entry_winid_mask
         sta     L9832
         MGTK_CALL MGTK::InitPort, grafport
-        ldx     #$07
+        ldx     #7
 L98E3:  lda     grafport::cliprect,x
         sta     L9835,x
         dex
@@ -1269,7 +949,7 @@ L993A:  lda     poly,x
         dey
         dex
         bpl     L993A
-        lda     #$08
+        lda     #8
         ldy     #0
         sta     ($08),y
         lda     $08
@@ -1283,7 +963,7 @@ L9954:  dec     L9C74
         ldx     L9C74
         jmp     L98F2
 
-L995F:  ldx     #$07
+L995F:  ldx     #7
 L9961:  lda     drag_outline_buffer+2,x
         sta     L9C76,x
         dex
@@ -1351,7 +1031,7 @@ L99E1:  iny
         ldy     #1
         lda     ($08),y
         beq     L99FC
-        add16   $08, #$22, $08
+        add16   $08, #34, $08
         jmp     L9972
 
 L99FC:  MGTK_CALL MGTK::SetPattern, checkerboard_pattern2
@@ -1372,7 +1052,7 @@ L9A20:  lda     findwindow_params2,x
         jsr     L9E14
         jmp     L9A0E
 
-L9A31:  ldx     #$03
+L9A31:  ldx     #3
 L9A33:  lda     findwindow_params2,x
         sta     L9C92,x
         dex
@@ -1392,23 +1072,23 @@ L9A33:  lda     findwindow_params2,x
         MGTK_CALL MGTK::SetPattern, checkerboard_pattern2
         MGTK_CALL MGTK::SetPenMode, penXOR_2
         MGTK_CALL MGTK::FramePoly, drag_outline_buffer
-        lda     #$00
+        lda     #0
         sta     L9830
 L9A84:  sub16   findwindow_params2::mousex, L9C8E, L9C96
         sub16   findwindow_params2::mousey, L9C90, L9C98
         jsr     L9C9E
-        ldx     #$00
+        ldx     #0
 L9AAF:  add16   L9C7A,x, L9C96,x, L9C7A,x
         add16   L9C76,x, L9C96,x, L9C76,x
         inx
         inx
-        cpx     #$04
+        cpx     #4
         bne     L9AAF
-        lda     #$00
+        lda     #0
         sta     L9C75
         lda     L9C77
         bmi     L9AF7
-        cmp16   L9C7A, #$230
+        cmp16   L9C7A, #screen_width
         bcs     L9AFE
         jsr     L9DFA
         jmp     L9B0E
@@ -1424,9 +1104,9 @@ L9B03:  jsr     L9DB8
         sta     L9C75
 L9B0E:  lda     L9C79
         bmi     L9B31
-        cmp16   L9C78, #$0D
+        cmp16   L9C78, #13
         bcc     L9B31
-        cmp16   L9C7C, #$C0
+        cmp16   L9C7C, #screen_height
         bcs     L9B38
         jsr     L9E07
         jmp     L9B48
@@ -1560,7 +1240,7 @@ L9C29:  lda     highlight_list,x
         inc     $08+1
 L9C60:  jmp     L9C29
 
-L9C63:  lda     #$00
+L9C63:  lda     #0
 L9C65:  tay
         jsr     pop_zp_addrs
         tya
@@ -1603,7 +1283,7 @@ L9C96:  .byte   $00
 L9C97:  .byte   $00
 L9C98:  .byte   $00
 L9C99:  .byte   $00,$00,$00,$00,$00
-L9C9E:  ldx     #$07
+L9C9E:  ldx     #7
 L9CA0:  lda     L9C76,x
         sta     L9C86,x
         dex
@@ -1629,7 +1309,7 @@ L9CD1:  lda     L9C7A
         bne     L9CE4
         return  #0
 
-L9CE4:  sub16   #$230, L9C8A, L9C96
+L9CE4:  sub16   #screen_width, L9C8A, L9C96
 L9CF5:  add16   L9C86, L9C96, L9C76
         add16   L9C8A, L9C96, L9C7A
         add16   L9C8E, L9C96, L9C8E
@@ -1643,7 +1323,7 @@ L9D31:  lda     L9C78
         bne     L9D44
         return  #0
 
-L9D44:  sub16   #$0D, L9C88, L9C98
+L9D44:  sub16   #13, L9C88, L9C98
         jmp     L9D7C
 
 L9D58:  lda     L9C7C
@@ -1654,7 +1334,7 @@ L9D58:  lda     L9C7C
         bne     L9D6B
         return  #0
 
-L9D6B:  sub16   #$BF, L9C8C, L9C98
+L9D6B:  sub16   #screen_height-1, L9C8C, L9C98
 L9D7C:  add16   L9C88, L9C98, L9C78
         add16   L9C8C, L9C98, L9C7C
         add16   L9C90, L9C98, L9C90
@@ -1707,7 +1387,7 @@ L9E3D:  cmp     highlight_list,x
         dex
         bpl     L9E3D
         sta     L9EB3
-        cmp     #$01
+        cmp     #1
         beq     L9E6A
         asl     a
         tax
@@ -1744,7 +1424,7 @@ L9EB4:  asl     a
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; DESKTOP $0B IMPL
 
@@ -1775,7 +1455,7 @@ start:  lda     has_highlight
         dec     highlight_count
         lda     highlight_count
         bne     L9EEA
-        lda     #$00
+        lda     #0
         sta     has_highlight
 L9EEA:  ldy     #0
         lda     (ptr),y
@@ -1786,7 +1466,7 @@ L9EEA:  ldy     #0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; ICON_IN_RECT IMPL
 
 .proc ICON_IN_RECT_IMPL
@@ -1836,7 +1516,7 @@ done:   return  #0
 L9F8F:  return  #1
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L9F92:  .byte   0
 L9F93:  .byte   0
@@ -1845,7 +1525,7 @@ L9F94:  .byte   0
         .byte   0
         .byte   0
 
-L9F98:  lda     #$00
+L9F98:  lda     #0
         sta     L9F92
         beq     L9FA4
 
@@ -1870,7 +1550,7 @@ L9F9F:  lda     #$80
 
         jsr     push_zp_addrs
         copy16  paintbits_params2::mapbits, $08
-        ldy     #$0B
+        ldy     #11
 :       lda     ($08),y
         sta     paintbits_params2::mapbits,y
         dey
@@ -1992,23 +1672,23 @@ LA149:  dey
         bpl     LA13A
         rts
 
-LA14D:  ldx     #$00
+LA14D:  ldx     #0
 LA14F:  add16   paintbits_params2::viewloc::xcoord,x, paintbits_params2::maprect::x1,x, paintrect_params6::x1,x
         add16   paintbits_params2::viewloc::xcoord,x, paintbits_params2::maprect::x2,x, paintrect_params6::x2,x
         inx
         inx
-        cpx     #$04
+        cpx     #4
         bne     LA14F
         lda     paintrect_params6::y2
         sec
-        sbc     #$01
+        sbc     #1
         sta     paintrect_params6::y2
         bcs     LA189
         dec     paintrect_params6::y2+1
 LA189:  rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;;              v0          v1
 ;;;               +----------+
@@ -2164,7 +1844,7 @@ text_width:  .byte   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; REDRAW_ICONS IMPL
 
 .proc REDRAW_ICONS_IMPL
@@ -2200,7 +1880,7 @@ LA2DD:  pla
         jmp     LA2B5
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA2E3
         stx     LA322
@@ -2235,7 +1915,7 @@ LA322:  .byte   0
 LA323:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA324
         stx     LA363
@@ -2273,7 +1953,7 @@ LA359:  ldx     LA363
 LA363:  .byte   0
 LA364:  .byte   0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc push_zp_addrs
         ;; save return addr
@@ -2300,7 +1980,7 @@ LA364:  .byte   0
 stash:  .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc pop_zp_addrs
         ;; save return addr
@@ -2327,7 +2007,7 @@ stash:  .word   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LA39D:  MGTK_CALL MGTK::InitPort, grafport
         MGTK_CALL MGTK::SetPort, grafport
@@ -2387,7 +2067,7 @@ volume:
         jmp     LA446
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc erase_desktop_icon
         lda     #0
@@ -2408,7 +2088,7 @@ volume:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LA446:  jsr     push_zp_addrs
         ldx     num_icons
@@ -2423,7 +2103,7 @@ LA44D:  cpx     #$FF            ; =-1
 :       jsr     pop_zp_addrs
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA466
         ptr := $8
@@ -2475,7 +2155,7 @@ LA4C5:  pla
         jmp     LA44D
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LA4CB:  .byte   0
 
@@ -2488,42 +2168,42 @@ LA4D3:  pha
         jmp     LA4E2
 
 LA4DC:  pha
-        lda     #$00
+        lda     #0
         sta     LA4CB
-LA4E2:  ldy     #$00
+LA4E2:  ldy     #0
 LA4E4:  lda     grafport4,y
         sta     LA567,y
         iny
-        cpy     #$04
+        cpy     #4
         bne     LA4E4
-        ldy     #$08
+        ldy     #8
 LA4F1:  lda     grafport4,y
         sta     LA567-4,y
         iny
-        cpy     #$0C
+        cpy     #12
         bne     LA4F1
         bit     LA4CB
         bmi     LA506
         bvc     LA56F
         jmp     LA5CB
 
-LA506:  ldx     #$00
+LA506:  ldx     #0
 LA508:  sub16   poly::vertices,x, LA567, poly::vertices,x
         sub16   poly::vertices+2,x, LA569, poly::vertices+2,x
         inx
         inx
         inx
         inx
-        cpx     #$20
+        cpx     #32
         bne     LA508
-        ldx     #$00
+        ldx     #0
 LA538:  add16   poly::vertices,x, LA56B, poly::vertices,x
         add16   poly::vertices+2,x, LA56D, poly::vertices+2,x
         inx
         inx
         inx
         inx
-        cpx     #$20
+        cpx     #32
         bne     LA538
         rts
 
@@ -2542,7 +2222,7 @@ LA56F:  pla
         asl     a
         tax
         copy16  icon_ptrs,x, $06
-        ldy     #$03
+        ldy     #3
         lda     ($06),y
         clc
         adc     LA567
@@ -2560,7 +2240,7 @@ LA56F:  pla
         lda     ($06),y
         adc     LA56A
         sta     ($06),y
-        ldy     #$03
+        ldy     #3
         lda     ($06),y
         sec
         sbc     LA56B
@@ -2588,7 +2268,7 @@ LA5CB:  pla
         asl     a
         tax
         copy16  icon_ptrs,x, $06
-        ldy     #$03
+        ldy     #3
         lda     ($06),y
         sec
         sbc     LA567
@@ -2606,7 +2286,7 @@ LA5CB:  pla
         lda     ($06),y
         sbc     LA56A
         sta     ($06),y
-        ldy     #$03
+        ldy     #3
         lda     ($06),y
         clc
         adc     LA56B
@@ -2627,7 +2307,7 @@ LA5CB:  pla
         jsr     pop_zp_addrs
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 LA627:  .word   0
 LA629:  .word   0
@@ -2681,7 +2361,7 @@ done:   MGTK_CALL MGTK::SetPortBits, setportbits_params2
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA6A3
         lda     #$00
@@ -2720,14 +2400,14 @@ LA6C7:  lda     L9F93
         beq     LA6FA
         lda     setportbits_params2::cliprect::x2
         clc
-        adc     #$01
+        adc     #1
         sta     setportbits_params2::cliprect::x1
         sta     setportbits_params2::viewloc::xcoord
         lda     setportbits_params2::cliprect::x2+1
-        adc     #$00
+        adc     #0
         sta     setportbits_params2::cliprect::x1+1
         sta     setportbits_params2::viewloc::xcoord+1
-        ldx     #$05
+        ldx     #5
 LA6E5:  lda     LA629,x
         sta     setportbits_params2::cliprect::y1,x
         dex
@@ -2760,12 +2440,12 @@ LA6FA:  lda     setportbits_params2::cliprect::x1
         lda     setportbits_params2::cliprect::y2+1
         sta     LA6BE
         sta     LA6C2
-        lda     #$00
+        lda     #0
         sta     LA6B0
 LA747:  lda     LA6B0
-        cmp     #$04
+        cmp     #4
         bne     LA775
-        lda     #$00
+        lda     #0
         sta     LA6B0
 LA753:  MGTK_CALL MGTK::SetPortBits, setportbits_params2
         lda     setportbits_params2::cliprect::x2+1
@@ -2778,7 +2458,7 @@ LA753:  MGTK_CALL MGTK::SetPortBits, setportbits_params2
         sta     L9F93
         rts
 
-LA76F:  lda     #$01
+LA76F:  lda     #1
         sta     L9F93
         rts
 
@@ -2791,7 +2471,7 @@ LA77D:  lda     LA6B3,x
         sta     findwindow_params,y
         iny
         inx
-        cpy     #$04
+        cpy     #4
         bne     LA77D
         inc     LA6B0
         MGTK_CALL MGTK::FindWindow, findwindow_params
@@ -2905,7 +2585,7 @@ LA923:  lda     setportbits_params2::cliprect::x2
         jmp     LA753
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA938
         add16   grafport4::viewloc::ycoord, #15, grafport4::viewloc::ycoord
@@ -2916,7 +2596,7 @@ LA923:  lda     setportbits_params2::cliprect::x2
 
         PAD_TO $A980
 
-;;; ==================================================
+;;; ============================================================
 
         ;; 5.25" Floppy Disk
 floppy140_icon:
@@ -3174,7 +2854,7 @@ special_menu:
         .assert * = $AD58, error, "Segment length mismatch"
         PAD_TO $AE00
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Rects
 confirm_dialog_outer_rect:  DEFINE_RECT 4,2,396,98
@@ -3388,7 +3068,7 @@ str_on_system_disk:
         .assert * = $B5D9, error, "Segment length mismatch"
         PAD_TO $B600
 
-;;; ==================================================
+;;; ============================================================
 
 show_alert_indirection:
         jmp     show_alert_dialog
@@ -3424,7 +3104,7 @@ alert_bitmap:
         .addr   alert_bitmap    ; mapbits
         .byte   7               ; mapwidth
         .byte   0               ; reserved
-        DEFINE_RECT 0, 0, $24, $17 ; maprect
+        DEFINE_RECT 0, 0, 36, 23 ; maprect
 .endproc
 
 alert_rect:
@@ -3435,15 +3115,15 @@ alert_inner_frame_rect2:
         DEFINE_RECT 5, 3, 415, 52
 
 .proc portmap
-viewloc:        DEFINE_POINT $41, $57, viewloc
+viewloc:        DEFINE_POINT 65, 87, viewloc
 mapbits:        .addr   MGTK::screen_mapbits
 mapwidth:       .byte   MGTK::screen_mapwidth
 reserved:       .byte   0
-maprect:        DEFINE_RECT 0, 0, $1A4, $37, maprect
+maprect:        DEFINE_RECT 0, 0, 420, 55, maprect
 .endproc
 
 
-;;; ==================================================
+;;; ============================================================
 ;;; Show Alert Dialog
 ;;; Call show_alert_dialog with prompt number in X (???), A = ???
 
@@ -3624,18 +3304,18 @@ LBB5C:  MGTK_RELAY2_CALL MGTK::FrameRect, try_again_rect
 LBB75:  MGTK_RELAY2_CALL MGTK::MoveTo, pos_prompt
         addr_call_indirect draw_pascal_string, prompt_addr
 LBB87:  MGTK_RELAY2_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_down
         bne     LBB9A
         jmp     LBC0C
 
 LBB9A:  cmp     #MGTK::event_kind_key_down
         bne     LBB87
-        lda     event_params_key
+        lda     event_key
         and     #$7F
         bit     alert_action
         bpl     LBBEE
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         bne     LBBC3
         MGTK_RELAY2_CALL MGTK::SetPenMode, penXOR
         MGTK_RELAY2_CALL MGTK::PaintRect, cancel_rect
@@ -3653,11 +3333,11 @@ LBBCC:  MGTK_RELAY2_CALL MGTK::SetPenMode, penXOR
 
 LBBE3:  cmp     #'A'
         beq     LBBCC
-        cmp     #$0D
+        cmp     #CHAR_RETURN
         beq     LBBCC
         jmp     LBB87
 
-LBBEE:  cmp     #KEY_RETURN
+LBBEE:  cmp     #CHAR_RETURN
         bne     LBC09
         MGTK_RELAY2_CALL MGTK::SetPenMode, penXOR
         MGTK_RELAY2_CALL MGTK::PaintRect, try_again_rect
@@ -3667,7 +3347,7 @@ LBBEE:  cmp     #KEY_RETURN
 LBC09:  jmp     LBB87
 
 LBC0C:  jsr     LBDE1
-        MGTK_RELAY2_CALL MGTK::MoveTo, event_params_coords
+        MGTK_RELAY2_CALL MGTK::MoveTo, event_coords
         bit     alert_action
         bpl     LBC42
         MGTK_RELAY2_CALL MGTK::InRect, cancel_rect
@@ -3700,11 +3380,11 @@ LBC6D:  MGTK_RELAY2_CALL MGTK::SetPenMode, penXOR
         lda     #$00
         sta     LBCE8
 LBC84:  MGTK_RELAY2_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_up
         beq     LBCDB
         jsr     LBDE1
-        MGTK_RELAY2_CALL MGTK::MoveTo, event_params_coords
+        MGTK_RELAY2_CALL MGTK::MoveTo, event_coords
         MGTK_RELAY2_CALL MGTK::InRect, try_again_rect
         cmp     #MGTK::inrect_inside
         beq     LBCB5
@@ -3737,11 +3417,11 @@ LBCE9:  MGTK_RELAY2_CALL MGTK::SetPenMode, penXOR
         lda     #$00
         sta     LBD64
 LBD00:  MGTK_RELAY2_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_up
         beq     LBD57
         jsr     LBDE1
-        MGTK_RELAY2_CALL MGTK::MoveTo, event_params_coords
+        MGTK_RELAY2_CALL MGTK::MoveTo, event_coords
         MGTK_RELAY2_CALL MGTK::InRect, cancel_rect
         cmp     #MGTK::inrect_inside
         beq     LBD31
@@ -3774,11 +3454,11 @@ LBD65:  lda     #$00
         MGTK_RELAY2_CALL MGTK::SetPenMode, penXOR
         MGTK_RELAY2_CALL MGTK::PaintRect, try_again_rect
 LBD7C:  MGTK_RELAY2_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_up
         beq     LBDD3
         jsr     LBDE1
-        MGTK_RELAY2_CALL MGTK::MoveTo, event_params_coords
+        MGTK_RELAY2_CALL MGTK::MoveTo, event_coords
         MGTK_RELAY2_CALL MGTK::InRect, try_again_rect
         cmp     #MGTK::inrect_inside
         beq     LBDAD
@@ -3807,18 +3487,15 @@ LBDDB:  lda     #$02
 .endproc
         show_alert_dialog := show_alert_dialog_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
 LBDE0:  .byte   0
-LBDE1:  sub16   event_params_xcoord, portmap::viewloc::xcoord, event_params_xcoord
-        sub16   event_params_ycoord, portmap::viewloc::ycoord, event_params_ycoord
+LBDE1:  sub16   event_xcoord, portmap::viewloc::xcoord, event_xcoord
+        sub16   event_ycoord, portmap::viewloc::ycoord, event_ycoord
         rts
 
 .proc LBE08
-        lda     #$00
-        sta     LBE37
-        lda     #$08
-        sta     LBE38
+        copy16  #$0800, LBE37
         lda     LBFC9
         jsr     LBF10
         lda     LBFCB
@@ -3838,10 +3515,8 @@ LBE34:  lda     ($06),y
 LBE37           := * + 1
 LBE38           := * + 2
         sta     dummy1234
-        inc     LBE37
-        bne     LBE41
-        inc     LBE38
-LBE41:  lda     LBE5C
+        inc16   LBE37
+        lda     LBE5C
         cmp     LBFCC
         bcs     LBE4E
         inc     LBE5C
@@ -3925,10 +3600,8 @@ LBEDD:  lda     ($06),y
         pha
 LBEEB:  pla
         sta     ($06),y
-        inc     LBEBC
-        bne     LBEF6
-        inc     LBEBC+1
-LBEF6:  lda     LBF0B
+        inc16   LBEBC
+        lda     LBF0B
         cmp     LBFCC
         bcs     LBF03
         inc     LBF0B
@@ -3946,7 +3619,7 @@ LBF0E:  .byte   $00
 LBF0F:  .byte   $00
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LBF10
         sta     LBFCF
@@ -4088,11 +3761,11 @@ addr:   .addr   0
         PAD_TO $C000
 .endproc ; desktop_aux
 
-;;; ==================================================
+;;; ============================================================
 ;;;
 ;;; $C000 - $CFFF is I/O Space
 ;;;
-;;; ==================================================
+;;; ============================================================
 
         .org $D000
 
@@ -4107,10 +3780,11 @@ addr:   .addr   0
 
 ;;; Various routines callable from MAIN
 
-;;; ==================================================
+;;; ============================================================
 ;;; MGTK call from main>aux, call in Y, params at (X,A)
-.proc MGTK_RELAY
-        .assert * = $D000, error, "Entry point mismatch"
+
+.proc MGTK_RELAY_IMPL
+        .assert * = MGTK_RELAY, error, "Entry point mismatch"
         sty     addr-1
         stax    addr
         sta     RAMRDON
@@ -4121,7 +3795,7 @@ addr:   .addr   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; SET_POS with params at (X,A) followed by DRAW_TEXT call
 
 .proc SETPOS_DRAWTEXT_RELAY
@@ -4137,10 +3811,11 @@ addr:   .addr   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; DESKTOP call from main>aux, call in Y params at (X,A)
 
-.proc DESKTOP_RELAY
+.proc DESKTOP_RELAY_IMPL
+        .assert * = DESKTOP_RELAY, error, "Entry point mismatch"
         sty     addr-1
         stax    addr
         sta     RAMRDON
@@ -4153,17 +3828,7 @@ addr:   .addr   0
         rts
 .endproc
 
-.macro DESKTOP_RELAY_CALL call, addr
-        ldy     #(call)
-    .if .paramcount > 1
-        ldax    #(addr)
-    .else
-        ldax    #0
-    .endif
-        jsr     DESKTOP_RELAY
-.endmacro
-
-;;; ==================================================
+;;; ============================================================
 ;;; Used/Free icon map (Aux $1F80 - $1FFF)
 
         free_icon_map := $1F80
@@ -4208,7 +3873,7 @@ loop:   lda     free_icon_map,x
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Copy data to/from buffers (see cached_window_id / cached_window_icon_list / window_icon_count_table/2) ???
 
 .proc DESKTOP_COPY_BUF_IMPL
@@ -4281,7 +3946,7 @@ flag:   .byte   0
         DESKTOP_COPY_FROM_BUF := DESKTOP_COPY_BUF_IMPL::from
         DESKTOP_COPY_TO_BUF := DESKTOP_COPY_BUF_IMPL::to
 
-;;; ==================================================
+;;; ============================================================
 ;;; Assign active state to active_window_id window
 
 .proc DESKTOP_ASSIGN_STATE
@@ -4314,7 +3979,7 @@ loop:   lda     (src),y
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; From MAIN, load AUX (X,A) into A
 
 .proc DESKTOP_AUXLOAD
@@ -4328,7 +3993,7 @@ op:     lda     dummy1234
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; From MAIN, show alert
 
 ;;; ...with prompt #0
@@ -4365,20 +4030,20 @@ notpenBIC:      .byte   7
 ;;; Re-used param space for events/queries (10 bytes)
 
 event_params := *
-event_params_kind := event_params + 0
+event_kind := event_params + 0
         ;; if kind is key_down
-event_params_key := event_params + 1
-event_params_modifiers := event_params + 2
+event_key := event_params + 1
+event_modifiers := event_params + 2
         ;; if kind is no_event, button_down/up, drag, or apple_key:
-event_params_coords := event_params + 1
-event_params_xcoord := event_params + 1
-event_params_ycoord := event_params + 3
+event_coords := event_params + 1
+event_xcoord := event_params + 1
+event_ycoord := event_params + 3
         ;; if kind is update:
-event_params_window_id := event_params + 1
+event_window_id := event_params + 1
 
 activatectl_params := *
-activatectl_params_which_ctl := activatectl_params
-activatectl_params_activate  := activatectl_params + 1
+activatectl_which_ctl := activatectl_params
+activatectl_activate  := activatectl_params + 1
 
 trackthumb_params := *
 trackthumb_which_ctl := trackthumb_params
@@ -4386,12 +4051,12 @@ trackthumb_mousex := trackthumb_params + 1
 trackthumb_mousey := trackthumb_params + 3
 trackthumb_thumbpos := trackthumb_params + 5
 trackthumb_thumbmoved := trackthumb_params + 6
-        .assert trackthumb_mousex = event_params_xcoord, error, "param mismatch"
-        .assert trackthumb_mousey = event_params_ycoord, error, "param mismatch"
+        .assert trackthumb_mousex = event_xcoord, error, "param mismatch"
+        .assert trackthumb_mousey = event_ycoord, error, "param mismatch"
 
 updatethumb_params := *
-updatethumb_params_which_ctl := updatethumb_params
-updatethumb_params_thumbpos := updatethumb_params + 1
+updatethumb_which_ctl := updatethumb_params
+updatethumb_thumbpos := updatethumb_params + 1
 updatethumb_stash := updatethumb_params + 5 ; not part of struct
 
 screentowindow_params := *
@@ -4400,31 +4065,32 @@ screentowindow_screenx := screentowindow_params + 1
 screentowindow_screeny := screentowindow_params + 3
 screentowindow_windowx := screentowindow_params + 5
 screentowindow_windowy := screentowindow_params + 7
-        .assert screentowindow_screenx = event_params_xcoord, error, "param mismatch"
-        .assert screentowindow_screeny = event_params_ycoord, error, "param mismatch"
+        .assert screentowindow_screenx = event_xcoord, error, "param mismatch"
+        .assert screentowindow_screeny = event_ycoord, error, "param mismatch"
 
 findwindow_params := * + 1    ; offset to x/y overlap event_params x/y
-findwindow_params_mousex := findwindow_params + 0
-findwindow_params_mousey := findwindow_params + 2
-findwindow_params_which_area := findwindow_params + 4
-findwindow_params_window_id := findwindow_params + 5
-        .assert findwindow_params_mousex = event_params_xcoord, error, "param mismatch"
-        .assert findwindow_params_mousey = event_params_ycoord, error, "param mismatch"
+findwindow_mousex := findwindow_params + 0
+findwindow_mousey := findwindow_params + 2
+findwindow_which_area := findwindow_params + 4
+findwindow_window_id := findwindow_params + 5
+        .assert findwindow_mousex = event_xcoord, error, "param mismatch"
+        .assert findwindow_mousey = event_ycoord, error, "param mismatch"
 
 findcontrol_params := * + 1   ; offset to x/y overlap event_params x/y
-findcontrol_params_mousex := findcontrol_params + 0
-findcontrol_params_mousey := findcontrol_params + 2
+findcontrol_mousex := findcontrol_params + 0
+findcontrol_mousey := findcontrol_params + 2
 findcontrol_which_ctl := findcontrol_params + 4
 findcontrol_which_part := findcontrol_params + 5
-        .assert findcontrol_params_mousex = event_params_xcoord, error, "param mismatch"
-        .assert findcontrol_params_mousey = event_params_ycoord, error, "param mismatch"
+        .assert findcontrol_mousex = event_xcoord, error, "param mismatch"
+        .assert findcontrol_mousey = event_ycoord, error, "param mismatch"
 
 findicon_params := * + 1      ; offset to x/y overlap event_params x/y
-findicon_params_mousex := findicon_params + 0
-findicon_params_mousey := findicon_params + 2
+findicon_mousex := findicon_params + 0
+findicon_mousey := findicon_params + 2
 findicon_which_icon := findicon_params + 4
-        .assert findicon_params_mousex = event_params_xcoord, error, "param mismatch"
-        .assert findicon_params_mousey = event_params_ycoord, error, "param mismatch"
+findicon_window_id := findicon_params + 5
+        .assert findicon_mousex = event_xcoord, error, "param mismatch"
+        .assert findicon_mousey = event_ycoord, error, "param mismatch"
 
         ;; Enough space for all the param types, and then some
         .res    10, 0
@@ -4636,9 +4302,11 @@ watch_cursor:
         .byte   px(%0000000),px(%0000000)
         .byte   5, 5
 
-LD343:  .res    18, 0
+LD343:  .word   0
+buf_filename2:  .res    16, 0
 LD355:  .res    88, 0
-LD3AD:  .res    65, 0
+LD3AD:  .res    19, 0
+LD3C0:  .res    46, 0
 
 LD3EE:  .res    17, 0
 LD3FF:  .byte   0
@@ -4681,167 +4349,179 @@ alert_bitmap2_params:
         .addr   alert_bitmap2   ; mapbits
         .byte   7               ; mapwidth
         .byte   0               ; reserved
-        DEFINE_RECT 0, 0, $24, $17 ; maprect
+        DEFINE_RECT 0, 0, 36, 23 ; maprect
 
         ;; Looks like window param blocks starting here
 
-.proc winfoF
+.proc winfo_alert_dialog
 window_id:      .byte   $0F
 options:        .byte   MGTK::option_dialog_box
-title:  .addr   0
+title:          .addr   0
 hscroll:        .byte   MGTK::scroll_option_none
 vscroll:        .byte   MGTK::scroll_option_none
 hthumbmax:      .byte   0
 hthumbpos:      .byte   0
 vthumbmax:      .byte   0
 vthumbpos:      .byte   0
-status: .byte   0
+status:         .byte   0
 reserved:       .byte   0
-mincontwidth:   .word   $96
-maxcontwidth:   .word   $32
-mincontlength:  .word   $1F4
-maxcontlength:  .word   $8C
+mincontwidth:   .word   150
+maxcontwidth:   .word   50
+mincontlength:  .word   500
+maxcontlength:  .word   140
 port:
-viewloc:        DEFINE_POINT $4B, $23
+viewloc:        DEFINE_POINT 75, 35
 mapbits:        .addr   MGTK::screen_mapbits
 mapwidth:       .word   MGTK::screen_mapwidth
-cliprect:       DEFINE_RECT 0, 0, $190, $64
+cliprect:       DEFINE_RECT 0, 0, 400, 100
 penpattern:     .res    8, $FF
 colormasks:     .byte   MGTK::colormask_and, MGTK::colormask_or
-penloc: DEFINE_POINT 0, 0
+penloc:         DEFINE_POINT 0, 0
 penwidth:       .byte   1
 penheight:      .byte   1
 penmode:        .byte   0
-textbg: .byte   MGTK::textbg_white
+textbg:         .byte   MGTK::textbg_white
 fontptr:        .addr   DEFAULT_FONT
 nextwinfo:      .addr   0
 .endproc
 
-.proc winfo12
+;;; Dialog used for Selector > Add/Edit an Entry...
+
+.proc winfo_entrydlg
 window_id:      .byte   $12
 options:        .byte   MGTK::option_dialog_box
-title:  .addr   0
+title:          .addr   0
 hscroll:        .byte   MGTK::scroll_option_none
 vscroll:        .byte   MGTK::scroll_option_none
 hthumbmax:      .byte   0
 hthumbpos:      .byte   0
 vthumbmax:      .byte   0
 vthumbpos:      .byte   0
-status: .byte   0
+status:         .byte   0
 reserved:       .byte   0
-mincontwidth:   .word   $96
-maxcontwidth:   .word   $32
-mincontlength:  .word   $1F4
-maxcontlength:  .word   $8C
+mincontwidth:   .word   150
+maxcontwidth:   .word   50
+mincontlength:  .word   500
+maxcontlength:  .word   140
 port:
-viewloc:        DEFINE_POINT $19, $14
+viewloc:        DEFINE_POINT 25, 20
 mapbits:        .addr   MGTK::screen_mapbits
 mapwidth:       .word   MGTK::screen_mapwidth
-cliprect:       DEFINE_RECT 0, 0, $1F4, $99
+cliprect:       DEFINE_RECT 0, 0, 500, 153
 penpattern:     .res    8, $FF
 colormasks:     .byte   MGTK::colormask_and, MGTK::colormask_or
-penloc: DEFINE_POINT 0, 0
+penloc:         DEFINE_POINT 0, 0
 penwidth:       .byte   1
 penheight:      .byte   1
 penmode:        .byte   0
-textbg: .byte   MGTK::textbg_white
+textbg:         .byte   MGTK::textbg_white
 fontptr:        .addr   DEFAULT_FONT
 nextwinfo:      .addr   0
 .endproc
 
-.proc winfo15
+;;; File picker within Add/Edit an Entry dialog
+
+.proc winfo_entrydlg_file_picker
 window_id:      .byte   $15
 options:        .byte   MGTK::option_dialog_box
-title:  .addr   0
+title:          .addr   0
 hscroll:        .byte   MGTK::scroll_option_none
 vscroll:        .byte   MGTK::scroll_option_normal
 hthumbmax:      .byte   0
 hthumbpos:      .byte   0
 vthumbmax:      .byte   3
 vthumbpos:      .byte   0
-status: .byte   0
+status:         .byte   0
 reserved:       .byte   0
-mincontwidth:   .word   $64
-maxcontwidth:   .word   $46
-mincontlength:  .word   $64
-maxcontlength:  .word   $46
+mincontwidth:   .word   100
+maxcontwidth:   .word   70
+mincontlength:  .word   100
+maxcontlength:  .word   70
 port:
-viewloc:        DEFINE_POINT $35, $32
+viewloc:        DEFINE_POINT 53, 50
 mapbits:        .addr   MGTK::screen_mapbits
 mapwidth:       .word   MGTK::screen_mapwidth
-cliprect:       DEFINE_RECT 0, 0, $7D, $46
+cliprect:       DEFINE_RECT 0, 0, 125, 70
 penpattern:     .res    8, $FF
 colormasks:     .byte   MGTK::colormask_and, MGTK::colormask_or
-penloc: DEFINE_POINT 0, 0
+penloc:         DEFINE_POINT 0, 0
 penwidth:       .byte   1
 penheight:      .byte   1
 penmode:        .byte   0
-textbg: .byte   MGTK::textbg_white
+textbg:         .byte   MGTK::textbg_white
 fontptr:        .addr   DEFAULT_FONT
 nextwinfo:      .addr   0
 .endproc
 
-.proc winfo18
+;;; "About Apple II Desktop" Dialog
+
+.proc winfo_about_dialog
+        width := 400
+
 window_id:      .byte   $18
 options:        .byte   MGTK::option_dialog_box
-title:  .addr   0
+title:          .addr   0
 hscroll:        .byte   MGTK::scroll_option_none
 vscroll:        .byte   MGTK::scroll_option_none
 hthumbmax:      .byte   0
 hthumbpos:      .byte   0
 vthumbmax:      .byte   0
 vthumbpos:      .byte   0
-status: .byte   0
+status:         .byte   0
 reserved:       .byte   0
-mincontwidth:   .word   $96
-maxcontwidth:   .word   $32
-mincontlength:  .word   $1F4
-maxcontlength:  .word   $8C
+mincontwidth:   .word   150
+maxcontwidth:   .word   50
+mincontlength:  .word   500
+maxcontlength:  .word   140
 port:
-viewloc:        DEFINE_POINT $50, $28
+viewloc:        DEFINE_POINT (screen_width - width) / 2, 40
 mapbits:        .addr   MGTK::screen_mapbits
 mapwidth:       .word   MGTK::screen_mapwidth
-cliprect:       DEFINE_RECT 0, 0, $190, $6E
+cliprect:       DEFINE_RECT 0, 0, width, 110
 penpattern:     .res    8, $FF
 colormasks:     .byte   MGTK::colormask_and, MGTK::colormask_or
-penloc: DEFINE_POINT 0, 0
+penloc:         DEFINE_POINT 0, 0
 penwidth:       .byte   1
 penheight:      .byte   1
 penmode:        .byte   0
-textbg: .byte   MGTK::textbg_white
+textbg:         .byte   MGTK::textbg_white
 fontptr:        .addr   DEFAULT_FONT
 nextwinfo:      .addr   0
 .endproc
-winfo18_port    := winfo18::port
+winfo_about_dialog_port    := winfo_about_dialog::port
 
-.proc winfo1B
+;;; Dialog used for Edit/Delete/Run an Entry ...
+
+.proc winfo_entry_picker
+        width := 350
+
 window_id:      .byte   $1B
 options:        .byte   MGTK::option_dialog_box
-title:  .addr   0
+title:          .addr   0
 hscroll:        .byte   MGTK::scroll_option_none
 vscroll:        .byte   MGTK::scroll_option_none
 hthumbmax:      .byte   0
 hthumbpos:      .byte   0
 vthumbmax:      .byte   0
 vthumbpos:      .byte   0
-status: .byte   0
+status:         .byte   0
 reserved:       .byte   0
-mincontwidth:   .word   $96
-maxcontwidth:   .word   $32
-mincontlength:  .word   $1F4
-maxcontlength:  .word   $8C
+mincontwidth:   .word   150
+maxcontwidth:   .word   50
+mincontlength:  .word   500
+maxcontlength:  .word   140
 port:
-viewloc:        DEFINE_POINT $69, $19
+viewloc:        DEFINE_POINT (screen_width - width) / 2, 25
 mapbits:        .addr   MGTK::screen_mapbits
 mapwidth:       .word   MGTK::screen_mapwidth
-cliprect:       DEFINE_RECT 0, 0, $15E, $6E
+cliprect:       DEFINE_RECT 0, 0, width, 110
 penpattern:     .res    8, $FF
 colormasks:     .byte   MGTK::colormask_and, MGTK::colormask_or
-penloc: DEFINE_POINT 0, 0
+penloc:         DEFINE_POINT 0, 0
 penwidth:       .byte   1
 penheight:      .byte   1
 penmode:        .byte   0
-textbg: .byte   MGTK::textbg_white
+textbg:         .byte   MGTK::textbg_white
 fontptr:        .addr   DEFAULT_FONT
 nextwinfo:      .addr   0
 .endproc
@@ -4852,7 +4532,7 @@ rect1:  DEFINE_RECT 40,61,360,71, rect1
 point6: DEFINE_POINT 45,70, point6
 pos_dialog_title: DEFINE_POINT 0, 18, pos_dialog_title
 point7: DEFINE_POINT 40,18, point7
-pointD: DEFINE_POINT $28, $23, pointD
+pointD: DEFINE_POINT 40, 35, pointD
 
         dialog_label_default_x := 40
 dialog_label_pos:
@@ -4863,7 +4543,7 @@ dialog_label_pos:
         .addr   MGTK::screen_mapbits
         .byte   MGTK::screen_mapwidth
         .byte   0
-        DEFINE_RECT 0, 0, $166, $64
+        DEFINE_RECT 0, 0, 358, 100
 .endproc
 
         ;; ???
@@ -4992,9 +4672,12 @@ file_count:
         PASCAL_STRING "Source filename:"
         PASCAL_STRING "Destination filename:"
 
-        .byte   $1C,$00,$71,$00,$CF,$01,$7C,$00
-        .byte   $1E,$00,$7B,$00,$1C,$00,$88,$00
-        .byte   $CF,$01,$93,$00,$1E,$00,$92,$00
+dialog_rect1:   DEFINE_RECT 28, 113, 463, 124
+        .byte   $1E,$00,$7B,$00
+dialog_rect2:   DEFINE_RECT 28, 136, 463, 147
+
+
+        .byte   $1E,$00,$92,$00
 
         PASCAL_STRING "Delete a File ..."
         PASCAL_STRING "File to delete:"
@@ -5002,7 +4685,7 @@ file_count:
         .assert * = $DAD8, error, "Segment length mismatch"
         PAD_TO $DB00
 
-;;; ==================================================
+;;; ============================================================
 
         .addr   sd0s, sd1s, sd2s, sd3s, sd4s, sd5s, sd6s
         .addr   sd7s, sd8s, sd9s, sd10s, sd11s, sd12s, sd13s
@@ -5013,9 +4696,9 @@ file_count:
 run_list_entries:
         .res    640, 0
 
-;;; ==================================================
+;;; ============================================================
 ;;; Window & Icon State
-;;; ==================================================
+;;; ============================================================
 
 LDD9E:  .byte   0
 
@@ -5038,16 +4721,13 @@ selected_window_index: ; index of selected window (used to get prefix)
         .assert * = path_index, error, "Entry point mismatch"
         .byte   0
 
-is_file_selected:               ; 0 if no selection, 1 otherwise
-        .assert * = file_selected, error, "Entry point mismatch"
+selected_icon_count:            ; number of selected icons
+        .assert * = selected_file_count, error, "Entry point mismatch"
         .byte   0
 
-selected_file_index:            ; index of selected icon (global, not w/in window)
-        .assert * = file_index, error, "Entry point mismatch"
-        .byte   0
-
-        .res    126, 0
-
+selected_icon_list:            ; index of selected icon (global, not w/in window)
+        .assert * = selected_file_list, error, "Entry point mismatch"
+        .res    127, 0
 
         ;; Buffer for desktop windows
 win_table:
@@ -5061,7 +4741,7 @@ window_address_table:
         .addr   window_path_table+i*65
         .endrepeat
 
-;;; ==================================================
+;;; ============================================================
 
 LDFC5:  .byte   0
 LDFC6:  .byte   0
@@ -5083,7 +4763,8 @@ LE061:  .byte   $00
 
 
 LE062:  .res    170, 0
-LE10C:  .res    138, 0
+LE10C:  .byte   0
+LE10D:  .res    137, 0
 
 DESKTOP_DEVICELIST:
         .res    10, 0
@@ -5131,7 +4812,9 @@ menu_id:.byte   0
 item_num:.byte  0
 .endproc
 
-        .byte   $00,$00,$00,$00,$00,$00
+LE25C:  .byte   0
+LE25D:  .byte   0
+        .byte   $00,$00,$00,$00
         .byte   $00,$04,$00,$00,$00
 
 .proc checkitem_params
@@ -5151,7 +4834,11 @@ menu_item:      .byte   0
 disable:        .byte   0
 .endproc
 
-        .byte   $00,$04,$00
+LE26F:  .byte   $00
+
+LE270:  .byte   $04             ; number of items in startup menu?
+
+        .byte   $00
         .byte   $00,$00,$00,$00,$00,$00,$00,$00
 
         .addr   str_all
@@ -5287,7 +4974,7 @@ dummy_dd_item:
 icon_params2:
         .byte   0
 
-        .byte   $00,$00
+LE6BF:  .word   0
 
 LE6C1:
         .addr   winfo1title_ptr
@@ -5310,10 +4997,14 @@ pos_col_date: DEFINE_POINT 231, 0, pos_col_date
 .proc text_buffer2
         .addr   data
 length: .byte   0
-data:   .res    55, 0
+data:   .res    49, 0
 .endproc
 
-;;; ==================================================
+LE71D:  .word   0
+LE71F:  .byte   0
+        .byte   0,0,0
+
+;;; ============================================================
 
 .macro WINFO_DEFN id, label, buflabel
 .proc label
@@ -5361,7 +5052,7 @@ buflabel:       .res    18, 0
         WINFO_DEFN 8, winfo8, winfo8title_ptr
 
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; Window paths
 ;;; 8 entries; each entry is 65 bytes long
@@ -5378,7 +5069,7 @@ window_k_free_table:  .res    16, 0
 
         .res    8, 0            ; ???
 
-;;; ==================================================
+;;; ============================================================
 ;;; Resources for window header (Items/k in disk/available)
 
 str_items:
@@ -5422,7 +5113,7 @@ LEBFC:  .byte   0               ; flag of some sort ???
 
 saved_event_coords: DEFINE_POINT 0, 0
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; Each buffer is a list of icons in each window (0=desktop)
 ;;; window_icon_count_table = start of buffer = icon count
@@ -5442,7 +5133,8 @@ active_window_id:
         .byte   $00
 
 LEC26:  .res    8, 0           ; ???
-LEC2E:  .res    37, 0          ; ???
+LEC2E:  .res    21, 0          ; ???
+LEC43:  .res    16, 0          ; ???
 LEC53:  .byte   0
 LEC54:  .word   0
         .res    4, 0
@@ -5461,7 +5153,7 @@ icon_entries:
 
 ;;; (there's enough room here for 127 files at 27 bytes each)
 
-;;; ==================================================
+;;; ============================================================
 
         .org $FB00
 
@@ -5803,9 +5495,9 @@ app_mask:
         .assert * = $FFBA, error, "Segment length mismatch"
         PAD_TO $10000
 
-;;; ==================================================
+;;; ============================================================
 ;;; Segment loaded into MAIN $4000-$BEFF
-;;; ==================================================
+;;; ============================================================
 
 .proc desktop_main
 L0020           := $0020
@@ -5842,7 +5534,7 @@ JT_MGTK_RELAY:          jmp     MGTK_RELAY
 JT_SIZE_STRING:         jmp     compose_blocks_string
 JT_DATE_STRING:         jmp     compose_date_string
 L400C:                  jmp     L5E78 ; ???
-L400F:                  jmp     DESKTOP_AUXLOAD
+JT_AUXLOAD:             jmp     DESKTOP_AUXLOAD
 JT_EJECT:               jmp     cmd_eject
 JT_REDRAW_ALL:          jmp     redraw_windows          ; *
 JT_DESKTOP_RELAY:       jmp     DESKTOP_RELAY
@@ -5894,7 +5586,7 @@ skip:   lda     #0
         sta     LD2A9
         sta     double_click_flag
         sta     loop_counter
-        sta     $E26F
+        sta     LE26F
 
         ;; Pending error message?
         lda     pending_alert
@@ -5922,7 +5614,7 @@ main_loop:
 
         ;; Get an event
         jsr     get_event
-        lda     event_params_kind
+        lda     event_kind
 
         ;; Is it a button-down event? (including w/ modifiers)
         cmp     #MGTK::event_kind_button_down
@@ -5972,14 +5664,14 @@ redraw_windows:
         lda     #$00
         sta     L40F1
 L4100:  jsr     peek_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_update
         bne     L412B
         jsr     get_event
 L410D:  jsr     L4113
         jmp     L4100
 
-L4113:  MGTK_RELAY_CALL MGTK::BeginUpdate, event_params_window_id
+L4113:  MGTK_RELAY_CALL MGTK::BeginUpdate, event_window_id
         bne     L4151           ; did not really need updating
         jsr     update_window
         MGTK_RELAY_CALL MGTK::EndUpdate
@@ -6003,15 +5695,15 @@ L4151:  rts
         main_loop := enter_main_loop::main_loop
         redraw_windows := enter_main_loop::redraw_windows
 
-;;; ==================================================
+;;; ============================================================
 
 
 L4152:  .byte   0
 
 
 .proc update_window
-        lda     event_params_window_id
-        cmp     #9              ; only handle windows 0...8
+        lda     event_window_id
+        cmp     #9              ; only handle windows 1...8
         bcc     L415B
         rts
 
@@ -6039,7 +5731,7 @@ L415B:  sta     active_window_id
         lda     ($06),y
         sbc     grafport2::viewloc::ycoord+1
         sta     L4243
-        cmp16   L4242, #$0F
+        cmp16   L4242, #15
         bpl     L41CB
         jsr     offset_grafport2
         ldx     #$0B
@@ -6108,10 +5800,10 @@ L4242:  .byte   0
 L4243:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L4244
-        lda     is_file_selected
+        lda     selected_icon_count
         bne     :+
 bail:   rts
 
@@ -6135,10 +5827,10 @@ bail:   rts
         bpl     :-
 
 L4270:  lda     L42C3
-        cmp     is_file_selected
+        cmp     selected_icon_count
         beq     done
         tax
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     icon_param
         jsr     icon_window_to_screen
         DESKTOP_RELAY_CALL DT_ICON_IN_RECT, icon_param
@@ -6152,10 +5844,10 @@ L4270:  lda     L42C3
 done:   jmp     reset_grafport3
 
 L42A5:  lda     L42C3
-        cmp     is_file_selected
+        cmp     selected_icon_count
         beq     done
         tax
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     icon_param
         DESKTOP_RELAY_CALL DT_UNHIGHLIGHT_ICON, icon_param
         inc     L42C3
@@ -6164,7 +5856,7 @@ L42A5:  lda     L42C3
 L42C3:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Menu Dispatch
 
 .proc handle_keydown_impl
@@ -6261,13 +5953,13 @@ dispatch_table:
 
         ;; indexed by menu id-1
 offset_table:
-        .byte   $00,$14,$2C,$46,$50,$50,$6A,$7E,$8C
+        .byte   0,20,44,70,80,80,106,126,140
 
 flag:   .byte   $00
 
         ;; Handle accelerator keys
 handle_keydown:
-        lda     event_params_modifiers
+        lda     event_modifiers
         bne     :+              ; either OA or CA ?
         jmp     menu_accelerators           ; nope
 :       cmp     #3              ; both OA + CA ?
@@ -6275,7 +5967,7 @@ handle_keydown:
         rts
 
         ;; Non-menu keys
-:       lda     event_params_key
+:       lda     event_key
         ora     #$20            ; force to lower-case
         cmp     #'h'            ; OA-H (Highlight Icon)
         bne     :+
@@ -6297,11 +5989,11 @@ handle_keydown:
 
 menu_accelerators:
         lda     event_params+1
-        sta     $E25C
+        sta     LE25C
         lda     event_params+2
         beq     L43A1
-        lda     #$01
-L43A1:  sta     $E25D
+        lda     #1
+L43A1:  sta     LE25D
         MGTK_RELAY_CALL MGTK::MenuKey, menu_click_params
 
 menu_dispatch2:
@@ -6336,22 +6028,22 @@ L43E0:  tsx
         menu_dispatch2 := handle_keydown_impl::menu_dispatch2
         menu_dispatch_flag := handle_keydown_impl::flag
 
-;;; ==================================================
+;;; ============================================================
 ;;; Handle click
 
 .proc handle_click
         tsx
         stx     LE256
-        MGTK_RELAY_CALL MGTK::FindWindow, event_params_coords
-        lda     findwindow_params_which_area
+        MGTK_RELAY_CALL MGTK::FindWindow, event_coords
+        lda     findwindow_which_area
         bne     not_desktop
 
         ;; Click on desktop
         jsr     detect_double_click
         sta     double_click_flag
         lda     #0
-        sta     findwindow_params_window_id
-        DESKTOP_RELAY_CALL DT_FIND_ICON, event_params_coords
+        sta     findwindow_window_id
+        DESKTOP_RELAY_CALL DT_FIND_ICON, event_coords
         lda     findicon_which_icon
         beq     L4415
         jmp     L67D7
@@ -6367,13 +6059,13 @@ not_desktop:
 not_menu:
         pha                     ; which window - active or not?
         lda     active_window_id
-        cmp     findwindow_params_window_id
+        cmp     findwindow_window_id
         beq     handle_active_window_click
         pla
         jmp     handle_inactive_window_click
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc handle_active_window_click
         pla
@@ -6394,14 +6086,14 @@ not_menu:
 :       rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc handle_inactive_window_click
         jmp     L445D
 
 L445C:  .byte   0
 L445D:  jsr     clear_selection
-        ldx     $D20E
+        ldx     findwindow_window_id
         dex
         lda     LEC26,x
         sta     icon_param
@@ -6423,11 +6115,11 @@ L445D:  jsr     clear_selection
         lda     L445C
         sta     selected_window_index
         lda     #$01
-        sta     is_file_selected
+        sta     selected_icon_count
         lda     icon_param
-        sta     selected_file_index
-L44A6:  MGTK_RELAY_CALL MGTK::SelectWindow, findwindow_params_window_id
-        lda     findwindow_params_window_id
+        sta     selected_icon_list
+L44A6:  MGTK_RELAY_CALL MGTK::SelectWindow, findwindow_window_id
+        lda     findwindow_window_id
         sta     active_window_id
         sta     cached_window_id
         jsr     DESKTOP_COPY_TO_BUF
@@ -6450,7 +6142,7 @@ L44A6:  MGTK_RELAY_CALL MGTK::SelectWindow, findwindow_params_window_id
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc get_set_port2
         MGTK_RELAY_CALL MGTK::GetWinPort, getwinport_params2
@@ -6471,7 +6163,7 @@ L44A6:  MGTK_RELAY_CALL MGTK::SelectWindow, findwindow_params_window_id
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc redraw_windows_and_desktop
         jsr     redraw_windows
@@ -6479,7 +6171,7 @@ L44A6:  MGTK_RELAY_CALL MGTK::SelectWindow, findwindow_params_window_id
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L4530
         ldx     #0
@@ -6509,7 +6201,7 @@ L4559:  lda     DEVLST,y
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L4563
         lda     L45A0
@@ -6539,7 +6231,7 @@ L4591:  tya
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         .byte   $00
 L4597:  .byte   $00,$00,$00,$00,$00,$00,$00,$00
@@ -6549,7 +6241,7 @@ L45A0:  .byte   $00,$00,$00,$00,$00,$00,$00,$00
 L45A9:  .byte   $00,$00,$00,$00,$00,$00,$00,$00
         .byte   $00
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Possibly SmartPort STATUS call to determine ejectability ???
 
@@ -6615,7 +6307,7 @@ L45C7:  sta     unit_num
         plp
 
         adc     #1
-        sta     status_params_unit_num
+        sta     status_unit_num
 
         ;; Execute SmartPort call
         jsr     call
@@ -6650,12 +6342,12 @@ unit_num:       .byte   1
 list_ptr:       .addr   status_buffer
 status_code:    .byte   0
 .endproc
-status_params_unit_num := status_params::unit_num
+status_unit_num := status_params::unit_num
 
 status_buffer:  .res    16, 0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L464E
         lda     LD343
@@ -6668,20 +6360,20 @@ status_buffer:  .res    16, 0
 :       bit     LD343+1
         bmi     L4666
         jsr     disable_selector_menu_items
-L4666:  lda     is_file_selected
+L4666:  lda     selected_icon_count
         beq     L46A8
         lda     selected_window_index
         bne     L4691
-        lda     is_file_selected
+        lda     selected_icon_count
         cmp     #2
         bcs     L4697
-        lda     selected_file_index
+        lda     selected_icon_list
         cmp     trash_icon_num
         bne     L468B
         jsr     disable_eject_menu_item
         jsr     disable_file_menu_items
         lda     #0
-        sta     $E26F
+        sta     LE26F
         rts
 
 L468B:  jsr     enable_eject_menu_item
@@ -6691,34 +6383,34 @@ L4691:  jsr     disable_eject_menu_item
         jmp     L469A
 
 L4697:  jsr     enable_eject_menu_item
-L469A:  bit     $E26F
+L469A:  bit     LE26F
         bmi     L46A7
         jsr     enable_file_menu_items
         lda     #$80
-        sta     $E26F
+        sta     LE26F
 L46A7:  rts
 
-L46A8:  bit     $E26F
+L46A8:  bit     LE26F
         bmi     L46AE
         rts
 
 L46AE:  jsr     disable_eject_menu_item
         jsr     disable_file_menu_items
         lda     #$00
-        sta     $E26F
+        sta     LE26F
         rts
 .endproc
 
 .proc MLI_RELAY
-        sty     L46CE
-        stax    L46CF
+        sty     call
+        stax    params
         php
         sei
         sta     ALTZPOFF
         sta     ROMIN2
         jsr     MLI
-L46CE:  .byte   $00
-L46CF:  .addr   dummy0000
+call:   .byte   $00
+params: .addr   dummy0000
         sta     ALTZPON
         tax
         lda     LCBANK1
@@ -6732,25 +6424,13 @@ L46CF:  .addr   dummy0000
         yax_call desktop_main::MLI_RELAY, call, addr
 .endmacro
 
-;;; ==================================================
+;;; ============================================================
 ;;; Launch file (double-click) ???
 
 .proc launch_file
         jmp     begin
 
-.proc get_file_info_params
-param_count:    .byte   $A
-pathname:       .addr   $220
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params, $220
 
 begin:
         jsr     set_watch_cursor
@@ -6766,9 +6446,9 @@ L46F8:  inx
         ldy     #$00
 L470C:  iny
         inx
-        lda     $D345,y
+        lda     buf_filename2,y
         sta     $220,x
-        cpy     $D345
+        cpy     buf_filename2
         bne     L470C
         stx     $220
         MLI_RELAY_CALL GET_FILE_INFO, get_file_info_params
@@ -6807,8 +6487,8 @@ L4773:  lda     LD355,x
         sta     $220,x
         dex
         bpl     L4773
-        ldx     $D345
-L477F:  lda     $D345,x
+        ldx     buf_filename2
+L477F:  lda     buf_filename2,x
         sta     INVOKER_FILENAME,x
         dex
         bpl     L477F
@@ -6820,19 +6500,7 @@ L477F:  lda     $D345,x
 
 ;;; --------------------------------------------------
 
-.proc get_file_info_params2
-param_count:    .byte   $A
-pathname:       .addr   $1800
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_ysed:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params2, $1800
 
 L47B8:  ldx     LD355
         stx     L4816
@@ -6878,7 +6546,7 @@ L4808:  cpx     #$01
 
 L4816:  .byte   $00
 L4817:  PASCAL_STRING "Basic.system"
-        .res    30, 0
+L4824:  .res    30, 0
 
 L4842:  stax    $06
         ldy     #$00
@@ -6895,8 +6563,8 @@ L4859:  dey
         bne     L484B
         rts
 .endproc
-
-;;; ==================================================
+        L4824 := launch_file::L4824
+;;; ============================================================
 
 L485D:  .word   $E000
 L485F:  .word   $D000
@@ -6904,7 +6572,7 @@ L485F:  .word   $D000
 sys_start_flag:  .byte   $00
 sys_start_path:  .res    40, 0
 
-;;; ==================================================
+;;; ============================================================
 
 set_watch_cursor:
         jsr     hide_cursor
@@ -6926,13 +6594,13 @@ show_cursor:
         MGTK_RELAY_CALL MGTK::ShowCursor
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L48BE
         ldx     DESKTOP_DEVICELIST
         inx
 :       lda     DESKTOP_DEVICELIST,x
-        sta     DEVCNT,x
+        sta     DEVLST-1,x
         dex
         bpl     :-
         rts
@@ -6965,13 +6633,13 @@ set_penmode_copy:
         MGTK_RELAY_CALL MGTK::SetPenMode, pencopy
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_noop
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_selector_action
         jsr     set_watch_cursor
@@ -7032,21 +6700,9 @@ L498F:  .byte   $00
 .endproc
 
 
-;;; ==================================================
+;;; ============================================================
 
-.proc get_file_info_params3
-param_count:    .byte   $A
-pathname:       .addr   $220
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params3, $220
 
 .proc cmd_selector_item
         jmp     L49A6
@@ -7058,12 +6714,7 @@ L49A6:  lda     menu_click_params::item_num
         sbc     #$06
         sta     L49A5
         jsr     a_times_16
-        clc
-        adc     #$1E
-        sta     $06
-        txa
-        adc     #$DB
-        sta     $06+1
+        addax   #run_list_entries, $06
         ldy     #$0F
         lda     ($06),y
         asl     a
@@ -7092,12 +6743,7 @@ L49ED:  lda     L49A5
 
 L49FA:  lda     L49A5
         jsr     a_times_64
-        clc
-        adc     #$9E
-        sta     $06
-        txa
-        adc     #$DB
-        sta     $06+1
+        addax   #$DB9E, $06
 L4A0A:  ldy     #$00
         lda     ($06),y
         tay
@@ -7118,10 +6764,10 @@ L4A24:  dey
 L4A2B:  iny
         inx
         lda     LD355,y
-        sta     $D345,x
+        sta     buf_filename2,x
         cpy     LD355
         bne     L4A2B
-        stx     $D345
+        stx     buf_filename2
         lda     L4A46
         sta     LD355
         lda     #$00
@@ -7130,12 +6776,7 @@ L4A2B:  iny
 L4A46:  .byte   0
 L4A47:  pha
         jsr     a_times_64
-        clc
-        adc     #$9E
-        sta     $06
-        txa
-        adc     #$DB
-        sta     $06+1
+        addax   #$DB9E, $06
         ldy     #$00
         lda     ($06),y
         tay
@@ -7211,7 +6852,7 @@ L4AEA:  jsr     L4B5F
         L4A77 := cmd_selector_item::L4A77
         L4AAD := cmd_selector_item::L4AAD
 
-;;; ==================================================
+;;; ============================================================
 
 .proc get_LD3FF
         sta     ALTZPOFF
@@ -7269,12 +6910,7 @@ L4AEA:  jsr     L4B5F
         addr_call copy_LD3EE_str, path_buffer
         lda     L4BB0
         jsr     a_times_64
-        clc
-        adc     #<$DB9E
-        sta     $06
-        txa
-        adc     #>$DB9E
-        sta     $06+1
+        addax   #$DB9E, $06
         ldy     #$00
         lda     ($06),y
         sta     L4BB1
@@ -7308,14 +6944,14 @@ L4BB0:  .byte   0
 L4BB1:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_about
         yax_call launch_dialog, index_about_dialog, $0000
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_deskacc_impl
         ptr := $6
@@ -7331,12 +6967,7 @@ start:  jsr     reset_grafport3
         sec
         sbc     #3              ; About and separator before first item
         jsr     a_times_16
-        clc
-        adc     #<buf
-        sta     ptr
-        txa
-        adc     #>buf
-        sta     ptr+1
+        addax   #buf, ptr
 
         ;; Compute total length
         ldy     #0
@@ -7369,9 +7000,9 @@ nope:   dex
         ;; Load the DA
         jsr     open
         bmi     done
-        lda     open_params_ref_num
-        sta     read_params_ref_num
-        sta     close_params_ref_num
+        lda     open_ref_num
+        sta     read_ref_num
+        sta     close_ref_num
         jsr     read
         jsr     close
         lda     #$80
@@ -7407,28 +7038,14 @@ close:  yxa_jump MLI_RELAY, CLOSE, close_params
 
 unused: .byte   0               ; ???
 
-.proc open_params
-param_count:    .byte   3
-pathname:       .addr   str_desk_acc
-io_buffer:      .addr   $1C00
-ref_num:        .byte   0
-.endproc
-        open_params_ref_num := open_params::ref_num
+        DEFINE_OPEN_PARAMS open_params, str_desk_acc, $1C00
+        open_ref_num := open_params::ref_num
 
-.proc read_params
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   DA_LOAD_ADDRESS
-request_count:  .word   DA_MAX_SIZE
-trans_count:    .word   0
-.endproc
-        read_params_ref_num := read_params::ref_num
+        DEFINE_READ_PARAMS read_params, DA_LOAD_ADDRESS, DA_MAX_SIZE
+        read_ref_num := read_params::ref_num
 
-.proc close_params
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
-        close_params_ref_num := close_params::ref_num
+        DEFINE_CLOSE_PARAMS close_params
+        close_ref_num := close_params::ref_num
 
         .define prefix "Desk.acc/"
 
@@ -7441,13 +7058,13 @@ str_desk_acc:
 .endproc
         cmd_deskacc := cmd_deskacc_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
         ;; high bit set while a DA is running
 running_da_flag:
         .byte   0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_copy_file
         jsr     set_watch_cursor
@@ -7502,7 +7119,7 @@ L4CF3:  iny
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L4D19
         ldy     #$00
@@ -7540,7 +7157,7 @@ L4D4E:  stx     LE04B
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_delete_file
         jsr     set_watch_cursor
@@ -7605,17 +7222,17 @@ L4DD2:  dey
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_open
         ldx     #$00
-L4DEC:  cpx     is_file_selected
+L4DEC:  cpx     selected_icon_count
         bne     L4DF2
         rts
 
 L4DF2:  txa
         pha
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_lookup
         stax    $06
         ldy     #icon_entry_offset_win_type
@@ -7635,7 +7252,7 @@ L4E14:  pla
         jmp     L4DEC
 
 L4E1A:  sta     L4E71
-        lda     is_file_selected
+        lda     selected_icon_count
         cmp     #$02
         bcs     L4E14
         pla
@@ -7649,7 +7266,7 @@ L4E34:  lda     ($06),y
         sta     LD355,y
         dey
         bpl     L4E34
-        lda     selected_file_index
+        lda     selected_icon_list
         jsr     icon_entry_lookup
         stax    $06
         ldy     #$09
@@ -7670,7 +7287,7 @@ L4E51:  lda     ($06),y
         tax
         dex
         dex
-        stx     $D345
+        stx     buf_filename2
         lda     L4E71
         cmp     #$20
         bcc     L4E6E
@@ -7680,7 +7297,7 @@ L4E6E:  jmp     launch_file
 L4E71:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_close
         lda     active_window_id
@@ -7739,9 +7356,9 @@ L4EC3:  sta     cached_window_icon_count
         DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, icon_param
         jsr     reset_grafport3
         lda     #$01
-        sta     is_file_selected
+        sta     selected_icon_count
         lda     icon_param
-        sta     selected_file_index
+        sta     selected_icon_list
         ldx     active_window_id
         dex
         lda     LEC26,x
@@ -7761,7 +7378,7 @@ L4F3C:  lda     #MGTK::checkitem_uncheck
         jmp     reset_grafport3
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_close_all
         lda     active_window_id   ; current window
@@ -7771,7 +7388,7 @@ L4F3C:  lda     #MGTK::checkitem_uncheck
 done:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_disk_copy
         lda     #dynamic_routine_disk_copy
@@ -7782,7 +7399,7 @@ done:   rts
 fail:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_new_folder_impl
 
@@ -7790,16 +7407,8 @@ L4F67:  .byte   $00
 L4F68:  .byte   $00
 L4F69:  .byte   $00
 
-.proc create_params
-param_count:    .byte   7
-pathname:       .addr   path_buffer
-access: .byte   %11000011       ; destroy/rename/write/read
-file_type:      .byte   FT_DIRECTORY
-aux_type:       .word   0
-storage_type:   .byte   ST_LINKED_DIRECTORY
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        ;; access = destroy/rename/write/read
+        DEFINE_CREATE_PARAMS create_params, path_buffer, ACCESS_DEFAULT, FT_DIRECTORY,, ST_LINKED_DIRECTORY
 
 path_buffer:
         .res    65, 0              ; buffer is used elsewhere too
@@ -7836,10 +7445,7 @@ L4FF6:  lda     ($06),y
         MLI_RELAY_CALL CREATE, create_params
         beq     L5027
         jsr     DESKTOP_SHOW_ALERT0
-        lda     L504E
-        sta     L4F68
-        lda     L504F
-        sta     L4F69
+        copy16  L504E, L4F68
         jmp     L4FC6
 
         rts
@@ -7860,30 +7466,30 @@ L504F:  .byte   0
         cmd_new_folder := cmd_new_folder_impl::start
         path_buffer := cmd_new_folder_impl::path_buffer ; ???
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_eject
         lda     selected_window_index
         beq     L5056
 L5055:  rts
 
-L5056:  lda     is_file_selected
+L5056:  lda     selected_icon_count
         beq     L5055
         cmp     #$01
         bne     L5067
-        lda     selected_file_index
+        lda     selected_icon_list
         cmp     trash_icon_num
         beq     L5055
 L5067:  lda     #$00
         tax
         tay
-L506B:  lda     selected_file_index,y
+L506B:  lda     selected_icon_list,y
         cmp     trash_icon_num
         beq     L5077
         sta     $1800,x
         inx
 L5077:  iny
-        cpy     is_file_selected
+        cpy     selected_icon_count
         bne     L506B
         dex
         stx     L5098
@@ -7899,7 +7505,7 @@ L5098:  .byte   $00
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_quit_impl
 
@@ -7913,13 +7519,7 @@ quit_code:
         ;; FB           xce             ; exchange carry/emulation (i.e. turn on 16 bit)
         ;; 5C 04 D0 E0  jmp $E0D004     ; long jump
 
-.proc quit_params
-param_count: .byte   4
-        .byte   0
-        .word   0
-        .byte   0
-        .word   0
-.endproc
+        DEFINE_QUIT_PARAMS quit_params
 
 start:
         ldx     #3
@@ -7958,7 +7558,7 @@ start:
 .endproc
         cmd_quit := cmd_quit_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_view_by_icon
         ldx     active_window_id
@@ -7992,7 +7592,7 @@ L511E:  sta     cached_window_icon_count
         jsr     get_port2
         jsr     offset_grafport2_and_set
         jsr     set_penmode_copy
-        MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect::x1
+        MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect
         lda     active_window_id
         jsr     L7D5D
         stax    L51EB
@@ -8038,11 +7638,11 @@ L51A7:  jsr     reset_grafport3
         jsr     update_scrollbars
         lda     selected_window_index
         beq     L51E3
-        lda     is_file_selected
+        lda     selected_icon_count
         beq     L51E3
         sta     L51EF
 L51C0:  ldx     L51EF
-        lda     is_file_selected,x
+        lda     selected_icon_count,x
         sta     icon_param
         jsr     icon_window_to_screen
         jsr     offset_grafport2_and_set
@@ -8061,7 +7661,7 @@ L51ED:  .byte   0
 L51EF:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L51F0
         ldx     active_window_id
@@ -8077,7 +7677,7 @@ L51EF:  .byte   0
         jsr     get_port2
         jsr     offset_grafport2_and_set
         jsr     set_penmode_copy
-        MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect::x1
+        MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect
         lda     active_window_id
         jsr     L7D5D
         stax    L5263
@@ -8113,7 +7713,7 @@ L5265:  .byte   0
         .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_view_by_name
         ldx     active_window_id
@@ -8134,7 +7734,7 @@ L5276:  cmp     #$00
         jmp     L51F0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_view_by_date
         ldx     active_window_id
@@ -8155,7 +7755,7 @@ L5294:  cmp     #$00
         jmp     L51F0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_view_by_size
         ldx     active_window_id
@@ -8176,7 +7776,7 @@ L52B2:  cmp     #$00
         jmp     L51F0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_view_by_type
         ldx     active_window_id
@@ -8197,7 +7797,7 @@ L52D0:  cmp     #$00
         jmp     L51F0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc update_view_menu_check
         ;; Uncheck last checked
@@ -8214,7 +7814,7 @@ L52D0:  cmp     #$00
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc close_active_window
         DESKTOP_RELAY_CALL DT_CLOSE_WINDOW, active_window_id
@@ -8241,11 +7841,11 @@ done:   jsr     DESKTOP_COPY_FROM_BUF
         jmp     DESKTOP_COPY_TO_BUF
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L533F:  .byte   0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_format_disk
         lda     #dynamic_routine_format_erase
@@ -8263,7 +7863,7 @@ L533F:  .byte   0
 fail:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_erase_disk
         lda     #dynamic_routine_format_erase
@@ -8280,35 +7880,35 @@ fail:   rts
 done:   jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_get_info
         jsr     L8F09
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_get_size
         jsr     L8F27
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_unlock
         jsr     L8F0F
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_lock
         jsr     L8F0C
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_rename_icon
         jsr     L8F12
@@ -8322,20 +7922,20 @@ L5398:  lda     selected_window_index
         bne     L53B5
         ldx     #$00
         ldy     #$00
-L53A1:  lda     selected_file_index,x
+L53A1:  lda     selected_icon_list,x
         cmp     #$01
         beq     L53AC
         sta     L5428,y
         iny
 L53AC:  inx
-        cpx     selected_file_index
+        cpx     selected_icon_list
         bne     L53A1
         sty     L5427
 L53B5:  lda     #$FF
         sta     L5426
 L53BA:  inc     L5426
         lda     L5426
-        cmp     is_file_selected
+        cmp     selected_icon_count
         bne     L53D0
         lda     selected_window_index
         bne     L53CD
@@ -8343,7 +7943,7 @@ L53BA:  inc     L5426
 L53CD:  jmp     L5E78
 
 L53D0:  tax
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     L5431
         bmi     L53BA
         jsr     window_address_lookup
@@ -8360,7 +7960,7 @@ L53EF:  dec     L704B
         lda     L704C,x
         cmp     active_window_id
         beq     L5403
-        sta     findwindow_params_window_id
+        sta     findwindow_window_id
         jsr     handle_inactive_window_click
 L5403:  jsr     close_window
         lda     L704B
@@ -8393,7 +7993,7 @@ L543E:  inx
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Handle keyboard-based icon selection ("highlighting")
 
 .proc cmd_higlight
@@ -8412,7 +8012,7 @@ L544A:  .byte   0
 L544D:
         lda     #$00
         sta     $1800
-        lda     $EC25
+        lda     active_window_id
         bne     L545A
         jmp     L54C5
 
@@ -8428,11 +8028,11 @@ L5464:  lda     active_window_id
         lda     active_window_id
         jsr     window_lookup
         stax    $06
-        ldy     #$1C
+        ldy     #MGTK::winfo_offset_port+MGTK::grafport_offset_maprect
 L5479:  lda     ($06),y
-        sta     $E214,y
+        sta     rect_E230-(MGTK::winfo_offset_port+MGTK::grafport_offset_maprect),y
         iny
-        cpy     #$24
+        cpy     #MGTK::winfo_offset_port+MGTK::grafport_offset_maprect+8
         bne     L5479
         ldx     #$00
 L5485:  cpx     cached_window_icon_count
@@ -8477,8 +8077,7 @@ L54CA:  lda     cached_window_icon_list,y
         sta     $1800
         lda     #$00
         sta     L544A
-        lda     #$FF
-        ldx     #$03
+        ldax    #$03FF
 L54EA:  sta     L5444,x
         dex
         bpl     L54EA
@@ -8532,8 +8131,7 @@ L5547:  inx
         ldx     L5449
         tya
         sta     $1801,x
-        lda     #$FF
-        ldx     #$03
+        ldax    #$03FF
 L5565:  sta     L5444,x
         dex
         bpl     L5565
@@ -8548,7 +8146,7 @@ L5579:  lda     #$00
         jsr     clear_selection
 L5581:  jsr     L55F0
 L5584:  jsr     get_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_key_down
         beq     L5595
         cmp     #MGTK::event_kind_button_down
@@ -8557,13 +8155,13 @@ L5584:  jsr     get_event
 
 L5595:  lda     event_params+1
         and     #$7F
-        cmp     #KEY_RETURN
+        cmp     #CHAR_RETURN
         beq     L55D1
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         beq     L55D1
-        cmp     #KEY_LEFT
+        cmp     #CHAR_LEFT
         beq     L55BE
-        cmp     #KEY_RIGHT
+        cmp     #CHAR_RIGHT
         bne     L5584
         ldx     L544A
         inx
@@ -8585,7 +8183,7 @@ L55C8:  stx     L544A
 
 L55D1:  ldx     L544A
         lda     $1801,x
-        sta     selected_file_index
+        sta     selected_icon_list
         jsr     icon_entry_lookup
         stax    $06
         ldy     #icon_entry_offset_win_type
@@ -8593,7 +8191,7 @@ L55D1:  ldx     L544A
         and     #icon_entry_winid_mask
         sta     selected_window_index
         lda     #1
-        sta     is_file_selected
+        sta     selected_icon_count
         rts
 
 L55F0:  ldx     L544A
@@ -8637,10 +8235,10 @@ L564A:  DESKTOP_RELAY_CALL $0B, icon_param
 L5661:  rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_select_all
-        lda     is_file_selected
+        lda     selected_icon_count
         beq     L566A
         jsr     clear_selection
 L566A:  ldx     active_window_id
@@ -8660,22 +8258,22 @@ L5676:  lda     active_window_id
 L5687:  ldx     cached_window_icon_count
         dex
 L568B:  lda     cached_window_icon_list,x
-        sta     selected_file_index,x
+        sta     selected_icon_list,x
         dex
         bpl     L568B
         lda     cached_window_icon_count
-        sta     is_file_selected
+        sta     selected_icon_count
         lda     active_window_id
         sta     selected_window_index
         lda     selected_window_index
         sta     LE22C
         beq     L56AB
         jsr     L56F9
-L56AB:  lda     is_file_selected
+L56AB:  lda     selected_icon_count
         sta     L56F8
         dec     L56F8
 L56B4:  ldx     L56F8
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     LE22B
         jsr     icon_entry_lookup
         stax    $06
@@ -8700,13 +8298,15 @@ L56F0:  lda     #$00
 L56F8:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
-L56F9:  sta     getwinport_params2::window_id
+.proc L56F9
+        sta     getwinport_params2::window_id
         jsr     get_port2
         jmp     offset_grafport2_and_set
+.endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Handle keyboard-based window activation
 
 .proc cmd_activate
@@ -8737,22 +8337,22 @@ L5721:  cpx     #$08
 L572D:  lda     #$00
         sta     L578C
 L5732:  jsr     get_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_key_down
         beq     L5743
         cmp     #MGTK::event_kind_button_down
         bne     L5732
         jmp     L578B
 
-L5743:  lda     event_params_key
+L5743:  lda     event_key
         and     #$7F
-        cmp     #KEY_RETURN
+        cmp     #CHAR_RETURN
         beq     L578B
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         beq     L578B
-        cmp     #KEY_LEFT
+        cmp     #CHAR_LEFT
         beq     L5772
-        cmp     #KEY_RIGHT
+        cmp     #CHAR_RIGHT
         bne     L5732
         ldx     L578C
         inx
@@ -8761,7 +8361,7 @@ L5743:  lda     event_params_key
         ldx     #$00
 L5763:  stx     L578C
         lda     L0800,x
-        sta     findwindow_params_window_id
+        sta     findwindow_window_id
         jsr     handle_inactive_window_click
         jmp     L5732
 
@@ -8772,7 +8372,7 @@ L5772:  ldx     L578C
         dex
 L577C:  stx     L578C
         lda     L0800,x
-        sta     findwindow_params_window_id
+        sta     findwindow_window_id
         jsr     handle_inactive_window_click
         jmp     L5732
 
@@ -8783,7 +8383,7 @@ L578D:  .byte   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Initiate keyboard-based resizing
 
 .proc cmd_resize
@@ -8791,7 +8391,7 @@ L578D:  .byte   0
         jmp     handle_resize_click
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Initiate keyboard-based window moving
 
 .proc cmd_move
@@ -8799,21 +8399,21 @@ L578D:  .byte   0
         jmp     handle_title_click
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Keyboard-based scrolling of window contents
 
 .proc cmd_scroll
         jsr     L5803
 loop:   jsr     get_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_down
         beq     done
         cmp     #MGTK::event_kind_key_down
         bne     loop
-        lda     event_params_key
-        cmp     #KEY_RETURN
+        lda     event_key
+        cmp     #CHAR_RETURN
         beq     done
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         bne     :+
 
 done:   lda     #$00
@@ -8826,12 +8426,12 @@ done:   lda     #$00
         bmi     :+
         jmp     vertical
 
-:       cmp     #KEY_RIGHT
+:       cmp     #CHAR_RIGHT
         bne     :+
         jsr     scroll_right
         jmp     loop
 
-:       cmp     #KEY_LEFT
+:       cmp     #CHAR_LEFT
         bne     vertical
         jsr     scroll_left
         jmp     loop
@@ -8842,18 +8442,18 @@ vertical:
         bmi     :+
         jmp     loop
 
-:       cmp     #KEY_DOWN
+:       cmp     #CHAR_DOWN
         bne     :+
         jsr     scroll_down
         jmp     loop
 
-:       cmp     #KEY_UP
+:       cmp     #CHAR_UP
         bne     loop
         jsr     scroll_up
         jmp     loop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L5803
         lda     active_window_id
@@ -8872,7 +8472,7 @@ vertical:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 scroll_right:                   ; elevator right / contents left
         ldax    L585F
@@ -8910,7 +8510,7 @@ L5861:  .word   0
         sta     updatethumb_stash
         inc     updatethumb_stash
         lda     #MGTK::ctl_horizontal_scroll_bar
-        sta     updatethumb_params_which_ctl
+        sta     updatethumb_which_ctl
         jsr     L5C54
         lda     updatethumb_stash
 :       rts
@@ -8923,7 +8523,7 @@ L587D:  .byte   0
         sta     updatethumb_stash
         dec     updatethumb_stash
         lda     #MGTK::ctl_horizontal_scroll_bar
-        sta     updatethumb_params_which_ctl
+        sta     updatethumb_which_ctl
         jsr     L5C54
         lda     updatethumb_stash
 :       rts
@@ -8937,7 +8537,7 @@ L587D:  .byte   0
         sta     updatethumb_stash
         inc     updatethumb_stash
         lda     #MGTK::ctl_vertical_scroll_bar
-        sta     updatethumb_params_which_ctl
+        sta     updatethumb_which_ctl
         jsr     L5C54
         lda     updatethumb_stash
 :       rts
@@ -8950,7 +8550,7 @@ L58AD:  .byte   0
         sta     updatethumb_stash
         dec     updatethumb_stash
         lda     #MGTK::ctl_vertical_scroll_bar
-        sta     updatethumb_params_which_ctl
+        sta     updatethumb_which_ctl
         jsr     L5C54
         lda     updatethumb_stash
 :       rts
@@ -9000,7 +8600,7 @@ L58AD:  .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_check_drives
         lda     #0
@@ -9070,7 +8670,7 @@ L5998:  pla
         jmp     L5976
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L599E:  .byte   0
 
@@ -9124,12 +8724,7 @@ L59F3:  ldy     menu_click_params::item_num
         jmp     L5A4C
 
 L59FE:  jsr     icon_entry_lookup
-        clc
-        adc     #$09
-        sta     $06
-        txa
-        adc     #$00
-        sta     $06+1
+        addax   #9, $06
         ldy     #$00
         lda     ($06),y
         tay
@@ -9151,7 +8746,7 @@ L5A2F:  ldx     L704B
         lda     L704C,x
         cmp     active_window_id
         beq     L5A43
-        sta     findwindow_params_window_id
+        sta     findwindow_window_id
         jsr     handle_inactive_window_click
 L5A43:  jsr     close_window
         dec     L704B
@@ -9210,7 +8805,7 @@ L5AC6:  .res    10, 0
 L5AD0:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cmd_startup_item
         ldx     menu_click_params::item_num
@@ -9257,7 +8852,7 @@ L5AD0:  .byte   0
         reset_and_invoke_target := reset_and_invoke::target
 
 
-;;; ==================================================
+;;; ============================================================
 
 L5B1B:  .byte   0
 
@@ -9273,11 +8868,11 @@ L5B1B:  .byte   0
         ;; Restore event coords (following detect_double_click)
         ldx     #3
 :       lda     saved_event_coords,x
-        sta     event_params_coords,x
+        sta     event_coords,x
         dex
         bpl     :-
 
-        MGTK_RELAY_CALL MGTK::FindControl, event_params_coords
+        MGTK_RELAY_CALL MGTK::FindControl, event_coords
         lda     findcontrol_which_ctl
         bne     :+
         jmp     handle_content_click ; 0 = ctl_not_a_control
@@ -9300,7 +8895,7 @@ L5B1B:  .byte   0
         bne     :+
         jmp     done_client_click
 :       jsr     L5803
-        lda     $D20E
+        lda     findcontrol_which_part
         cmp     #MGTK::part_thumb
         bne     :+
         jsr     do_track_thumb
@@ -9346,7 +8941,7 @@ horiz:  lda     active_window_id
         bne     :+
         jmp     done_client_click
 :       jsr     L5803
-        lda     $D20E
+        lda     findcontrol_which_part
         cmp     #MGTK::part_thumb
         bne     :+
         jsr     do_track_thumb
@@ -9389,7 +8984,7 @@ done_client_click:
         jmp     DESKTOP_COPY_TO_BUF
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc do_track_thumb
         lda     findcontrol_which_ctl
@@ -9405,11 +9000,11 @@ done_client_click:
         jmp     DESKTOP_COPY_TO_BUF
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L5C54
         lda     updatethumb_stash
-        sta     updatethumb_params_thumbpos
+        sta     updatethumb_thumbpos
         MGTK_RELAY_CALL MGTK::UpdateThumb, updatethumb_params
         jsr     L6523
         jsr     L84D1
@@ -9424,18 +9019,18 @@ done_client_click:
         jmp     L6C19
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Handle mouse held down on scroll arrow/pager
 
 .proc check_control_repeat
         sta     ctl
         jsr     peek_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_drag
         beq     :+
 bail:   return  #$FF            ; high bit set = not repeating
 
-:       MGTK_RELAY_CALL MGTK::FindControl, event_params_coords
+:       MGTK_RELAY_CALL MGTK::FindControl, event_coords
         lda     findcontrol_which_ctl
         beq     bail
         cmp     #MGTK::ctl_dead_zone
@@ -9448,7 +9043,7 @@ bail:   return  #$FF            ; high bit set = not repeating
 ctl:    .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc handle_content_click
         bit     L5B1B
@@ -9456,26 +9051,26 @@ ctl:    .byte   0
         jmp     clear_selection
 
 :       lda     active_window_id
-        sta     $D20E
-        DESKTOP_RELAY_CALL DT_FIND_ICON, event_params_coords
+        sta     findicon_window_id
+        DESKTOP_RELAY_CALL DT_FIND_ICON, findicon_params
         lda     findicon_which_icon
         bne     L5CDA
         jsr     L5F13
         jmp     L5DEC
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 
 L5CD9:  .byte   0
 
 .proc L5CDA
         sta     L5CD9
-        ldx     is_file_selected
+        ldx     selected_icon_count
         beq     L5CFB
         dex
         lda     L5CD9
-L5CE6:  cmp     selected_file_index,x
+L5CE6:  cmp     selected_icon_list,x
         beq     L5CF0
         dex
         bpl     L5CE6
@@ -9492,10 +9087,10 @@ L5CFB:  bit     BUTN0
         cmp     active_window_id
         beq     L5D0B
 L5D08:  jsr     clear_selection
-L5D0B:  ldx     is_file_selected
+L5D0B:  ldx     selected_icon_count
         lda     L5CD9
-        sta     selected_file_index,x
-        inc     is_file_selected
+        sta     selected_icon_list,x
+        inc     selected_icon_count
         lda     active_window_id
         sta     selected_window_index
         lda     active_window_id
@@ -9560,11 +9155,11 @@ L5DAD:  cpx     #$FF
         jsr     get_set_port2
         jsr     cached_icons_window_to_screen
         jsr     offset_grafport2_and_set
-        ldx     is_file_selected
+        ldx     selected_icon_count
         dex
 L5DC4:  txa
         pha
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     LE22E
         DESKTOP_RELAY_CALL DT_UNHIGHLIGHT_ICON, LE22E
         pla
@@ -9640,7 +9235,7 @@ L5E57:  lda     ($06),y
         tax
         dex
         dex
-        stx     $D345
+        stx     buf_filename2
         lda     L5E77
         cmp     #$20
         bcc     L5E74
@@ -9649,7 +9244,7 @@ L5E74:  jmp     launch_file     ; when double-clicked
 .endproc
         L5DEC := L5CDA::L5DEC
 
-;;; ==================================================
+;;; ============================================================
 
 L5E77:  .byte   0
 
@@ -9660,13 +9255,13 @@ L5E77:  .byte   0
         lda     L5F0A
         cmp     active_window_id
         beq     L5E8F
-        sta     findwindow_params_window_id
+        sta     findwindow_window_id
         jsr     handle_inactive_window_click
 L5E8F:  lda     active_window_id
         sta     getwinport_params2::window_id
         jsr     get_set_port2
         jsr     set_penmode_copy
-        MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect::x1
+        MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect
         ldx     active_window_id
         dex
         lda     LEC26,x
@@ -9712,7 +9307,7 @@ L5ECB:  lda     ($06),y
 L5F0A:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 
 .proc L5F13_impl
@@ -9729,13 +9324,13 @@ L5F0F:  .byte   0
 start:  copy16  #notpenXOR, $06
         jsr     L60D5
         ldx     #$03
-L5F20:  lda     event_params_coords,x
+L5F20:  lda     event_coords,x
         sta     L5F0B,x
         sta     L5F0F,x
         dex
         bpl     L5F20
         jsr     peek_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_drag
         beq     L5F3F
         bit     BUTN0
@@ -9758,7 +9353,7 @@ L5F50:  lda     L5F0B,x
         jsr     set_penmode_xor
         MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
 L5F6B:  jsr     peek_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_drag
         beq     L5FC5
         MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
@@ -9775,10 +9370,10 @@ L5F88:  txa
         DESKTOP_RELAY_CALL DT_ICON_IN_RECT, icon_param
         beq     L5FB9
         DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, icon_param
-        ldx     is_file_selected
-        inc     is_file_selected
+        ldx     selected_icon_count
+        inc     selected_icon_count
         lda     icon_param
-        sta     selected_file_index,x
+        sta     selected_icon_list,x
         lda     active_window_id
         sta     selected_window_index
 L5FB9:  lda     icon_param
@@ -9789,8 +9384,8 @@ L5FB9:  lda     icon_param
         jmp     L5F80
 
 L5FC5:  jsr     L60D5
-        sub16   event_params_xcoord, L60CF, L60CB
-        sub16   event_params_ycoord, L60D1, L60CD
+        sub16   event_xcoord, L60CF, L60CB
+        sub16   event_ycoord, L60D1, L60CD
         lda     L60CC
         bpl     L5FFE
         lda     L60CB
@@ -9813,36 +9408,36 @@ L600E:  lda     L60CB
 
 L601F:  MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
         ldx     #$03
-L602A:  lda     event_params_coords,x
+L602A:  lda     event_coords,x
         sta     L60CF,x
         dex
         bpl     L602A
-        cmp16   event_params_xcoord, rect_E230::x2
+        cmp16   event_xcoord, rect_E230::x2
         bpl     L6068
-        cmp16   event_params_xcoord, rect_E230::x1
+        cmp16   event_xcoord, rect_E230::x1
         bmi     L6054
         bit     L60D3
         bpl     L6068
-L6054:  copy16  event_params_xcoord, rect_E230::x1
+L6054:  copy16  event_xcoord, rect_E230::x1
         lda     #$80
         sta     L60D3
         jmp     L6079
 
-L6068:  copy16  event_params_xcoord, rect_E230::x2
+L6068:  copy16  event_xcoord, rect_E230::x2
         lda     #$00
         sta     L60D3
-L6079:  cmp16   event_params_ycoord, rect_E230::y2
+L6079:  cmp16   event_ycoord, rect_E230::y2
         bpl     L60AE
-        cmp16   event_params_ycoord, rect_E230::y1
+        cmp16   event_ycoord, rect_E230::y1
         bmi     L609A
         bit     L60D4
         bpl     L60AE
-L609A:  copy16  event_params_ycoord, rect_E230::y1
+L609A:  copy16  event_ycoord, rect_E230::y1
         lda     #$80
         sta     L60D4
         jmp     L60BF
 
-L60AE:  copy16  event_params_ycoord, rect_E230::y2
+L60AE:  copy16  event_ycoord, rect_E230::y2
         lda     #$00
         sta     L60D4
 L60BF:  MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
@@ -9862,7 +9457,7 @@ L60D5:  jsr     push_zp_addrs
 .endproc
         L5F13 := L5F13_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
 .proc handle_title_click
         jmp     L60DE
@@ -9958,7 +9553,7 @@ L619A:  .byte   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc handle_resize_click
         lda     active_window_id
@@ -9977,7 +9572,7 @@ L619A:  .byte   0
         jmp     reset_grafport3
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 handle_close_click:
         lda     active_window_id
@@ -10040,9 +9635,9 @@ L6227:  sta     cached_window_icon_count
         DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, icon_param
         jsr     reset_grafport3
         lda     #$01
-        sta     is_file_selected
+        sta     selected_icon_count
         lda     icon_param
-        sta     selected_file_index
+        sta     selected_icon_list
 L6276:  ldx     active_window_id
         dex
         lda     LEC26,x
@@ -10068,7 +9663,7 @@ L6276:  ldx     active_window_id
         jmp     redraw_windows_and_desktop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L62BC
         cmp     #$01
@@ -10146,7 +9741,7 @@ L638B:  .byte   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L638C
         jsr     L650F
@@ -10172,7 +9767,7 @@ L63EA:  .word   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L63EC
         jsr     L650F
@@ -10197,7 +9792,7 @@ L6449:  .byte   0
 L644A:  .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L644C
         tya
@@ -10206,7 +9801,7 @@ L644A:  .word   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6451
         jsr     L650F
@@ -10228,7 +9823,7 @@ L64AC:  .word   0
 L64AE:  .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L64B0
         jsr     L650F
@@ -10263,12 +9858,7 @@ L650D:  .word   0
 .proc L6523
         lda     active_window_id
         jsr     window_lookup
-        clc
-        adc     #$14
-        sta     $06
-        txa
-        adc     #$00
-        sta     $06+1
+        addax   #$14, $06
         ldy     #$25
 :       lda     ($06),y
         sta     grafport2,y
@@ -10297,12 +9887,12 @@ L650D:  .word   0
         bit     L5B1B
         bmi     :+
         jsr     cached_icons_screen_to_window
-:       MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect::x1
+:       MGTK_RELAY_CALL MGTK::PaintRect, grafport2::cliprect
         jsr     reset_grafport3
         jmp     L6C19
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc update_hthumb
         lda     active_window_id
@@ -10316,8 +9906,7 @@ L650D:  .word   0
         tay
         sub16   L7B63, L7B5F, L6602
         sub16   L6602, L6600, L6602
-        lsr     L6603
-        ror     L6602
+        lsr16    L6602
         ldx     L6602
         sub16   grafport2::cliprect::x1, L7B5F, L6602
         bpl     L65D0
@@ -10328,8 +9917,7 @@ L65D0:  cmp16   grafport2::cliprect::x2, L7B63
         tya
         jmp     L65EE
 
-L65E2:  lsr     L6603
-        ror     L6602
+L65E2:  lsr16    L6602
         lda     L6602
 L65EB:  jsr     L62BC
 L65EE:  sta     event_params+1
@@ -10343,7 +9931,7 @@ L6602:  .byte   0
 L6603:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc update_vthumb
         lda     active_window_id
@@ -10357,10 +9945,8 @@ L6603:  .byte   0
         tay
         sub16   L7B65, L7B61, L66A0
         sub16_8 L66A0, L669F, L66A0
-        lsr     L66A1
-        ror     L66A0
-        lsr     L66A1
-        ror     L66A0
+        lsr16    L66A0
+        lsr16    L66A0
         ldx     L66A0
         sub16   grafport2::cliprect::y1, L7B61, L66A0
         bpl     L6669
@@ -10386,7 +9972,7 @@ L66A0:  .byte   0
 L66A1:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L66A2
         ldx     active_window_id
@@ -10430,7 +10016,7 @@ check_menu_items:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Disable menu items for operating on a selected file
 
 .proc disable_file_menu_items
@@ -10460,7 +10046,7 @@ disable_menu_item:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc enable_file_menu_items
         lda     #MGTK::disableitem_enable
@@ -10489,7 +10075,7 @@ enable_menu_item:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc toggle_eject_menu_item
 enable:
@@ -10513,7 +10099,7 @@ disable:
 enable_eject_menu_item := toggle_eject_menu_item::enable
 disable_eject_menu_item := toggle_eject_menu_item::disable
 
-;;; ==================================================
+;;; ============================================================
 
 .proc toggle_selector_menu_items
 disable:
@@ -10545,17 +10131,17 @@ configure_menu_item:
 enable_selector_menu_items := toggle_selector_menu_items::enable
 disable_selector_menu_items := toggle_selector_menu_items::disable
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L67D7
-        lda     is_file_selected
+        lda     selected_icon_count
         bne     L67DF
         jmp     L681B
 
 L67DF:  tax
         dex
-        lda     $D20D
-L67E4:  cmp     selected_file_index,x
+        lda     findicon_which_icon
+L67E4:  cmp     selected_icon_list,x
         beq     L67EE
         dex
         bpl     L67E4
@@ -10568,24 +10154,24 @@ L67F6:  bit     BUTN0
         bpl     L6818
         lda     selected_window_index
         bne     L6818
-        DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, $D20D
-        ldx     is_file_selected
-        lda     $D20D
-        sta     selected_file_index,x
-        inc     is_file_selected
+        DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, findicon_which_icon
+        ldx     selected_icon_count
+        lda     findicon_which_icon
+        sta     selected_icon_list,x
+        inc     selected_icon_count
         jmp     L6834
 
 L6818:  jsr     clear_selection
-L681B:  DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, $D20D
+L681B:  DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, findicon_which_icon
         lda     #1
-        sta     is_file_selected
-        lda     $D20D
-        sta     selected_file_index
+        sta     selected_icon_count
+        lda     findicon_which_icon
+        sta     selected_icon_list
         lda     #0
         sta     selected_window_index
 L6834:  bit     double_click_flag
         bpl     L6880
-        lda     $D20D
+        lda     findicon_which_icon
         sta     LEBFC
         DESKTOP_RELAY_CALL $0A, LEBFC
         tax
@@ -10617,18 +10203,18 @@ L6878:  txa
         bne     L688F
         jmp     redraw_windows_and_desktop
 
-L6880:  lda     $D20D
+L6880:  lda     findicon_which_icon
         cmp     trash_icon_num
         beq     L688E
         jsr     L6A8A
         jsr     DESKTOP_COPY_FROM_BUF
 L688E:  rts
 
-L688F:  ldx     is_file_selected
+L688F:  ldx     selected_icon_count
         dex
 L6893:  txa
         pha
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     LE22D
         DESKTOP_RELAY_CALL DT_UNHIGHLIGHT_ICON, LE22D
         pla
@@ -10638,7 +10224,7 @@ L6893:  txa
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L68AA
         jsr     reset_grafport3
@@ -10648,13 +10234,13 @@ L6893:  txa
 
 L68B3:  jsr     clear_selection
         ldx     #3
-L68B8:  lda     event_params_coords,x
+L68B8:  lda     event_coords,x
         sta     rect_E230::x1,x
         sta     rect_E230::x2,x
         dex
         bpl     L68B8
         jsr     peek_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_drag
         beq     L68CF
         rts
@@ -10663,7 +10249,7 @@ L68CF:  MGTK_RELAY_CALL MGTK::SetPattern, checkerboard_pattern3
         jsr     set_penmode_xor
         MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
 L68E4:  jsr     peek_event
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_drag
         beq     L6932
         MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
@@ -10681,17 +10267,17 @@ L68F9:  cpx     cached_window_icon_count
         DESKTOP_RELAY_CALL DT_ICON_IN_RECT, icon_param
         beq     L692C
         DESKTOP_RELAY_CALL DT_HIGHLIGHT_ICON, icon_param
-        ldx     is_file_selected
-        inc     is_file_selected
+        ldx     selected_icon_count
+        inc     selected_icon_count
         lda     icon_param
-        sta     selected_file_index,x
+        sta     selected_icon_list,x
 L692C:  pla
         tax
         inx
         jmp     L68F9
 
-L6932:  sub16   event_params_xcoord, L6A39, L6A35
-        sub16   event_params_ycoord, L6A3B, L6A37
+L6932:  sub16   event_xcoord, L6A39, L6A35
+        sub16   event_ycoord, L6A3B, L6A37
         lda     L6A36
         bpl     L6968
         lda     L6A35
@@ -10714,36 +10300,36 @@ L6978:  lda     L6A35
 
 L6989:  MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
         ldx     #$03
-L6994:  lda     event_params_coords,x
+L6994:  lda     event_coords,x
         sta     L6A39,x
         dex
         bpl     L6994
-        cmp16   event_params_xcoord, rect_E230::x2
+        cmp16   event_xcoord, rect_E230::x2
         bpl     L69D2
-        cmp16   event_params_xcoord, rect_E230::x1
+        cmp16   event_xcoord, rect_E230::x1
         bmi     L69BE
         bit     L6A3D
         bpl     L69D2
-L69BE:  copy16  event_params_xcoord, rect_E230::x1
+L69BE:  copy16  event_xcoord, rect_E230::x1
         lda     #$80
         sta     L6A3D
         jmp     L69E3
 
-L69D2:  copy16  event_params_xcoord, rect_E230::x2
+L69D2:  copy16  event_xcoord, rect_E230::x2
         lda     #$00
         sta     L6A3D
-L69E3:  cmp16   event_params_ycoord, rect_E230::y2
+L69E3:  cmp16   event_ycoord, rect_E230::y2
         bpl     L6A18
-        cmp16   event_params_ycoord, rect_E230::y1
+        cmp16   event_ycoord, rect_E230::y1
         bmi     L6A04
         bit     L6A3E
         bpl     L6A18
-L6A04:  copy16  event_params_ycoord, rect_E230::y1
+L6A04:  copy16  event_ycoord, rect_E230::y1
         lda     #$80
         sta     L6A3E
         jmp     L6A29
 
-L6A18:  copy16  event_params_ycoord, rect_E230::y2
+L6A18:  copy16  event_ycoord, rect_E230::y2
         lda     #$00
         sta     L6A3E
 L6A29:  MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
@@ -10759,26 +10345,23 @@ L6A3D:  .byte   0
 L6A3E:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6A3F
-        ldx     #$07
-L6A41:  cmp     LEC26,x
+        ptr := $6
+
+        ldx     #7
+:       cmp     LEC26,x
         beq     L6A80
         dex
-        bpl     L6A41
+        bpl     :-
         jsr     icon_entry_lookup
-        clc
-        adc     #$09
-        sta     $06
-        txa
-        adc     #$00
-        sta     $06+1
-        ldy     #$00
-        lda     ($06),y
+        addax   #icon_entry_offset_len, ptr
+        ldy     #0
+        lda     (ptr),y
         tay
         dey
-L6A5C:  lda     ($06),y
+L6A5C:  lda     (ptr),y
         sta     $220,y
         dey
         bpl     L6A5C
@@ -10801,7 +10384,7 @@ L6A80:  inx
         jmp     L5E78
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6A8A
         sta     icon_params2
@@ -10894,11 +10477,11 @@ L6B3A:  lda     icon_params2
 
 L6B60:  lda     #$00
         sta     checkitem_params::check
-        jsr     L6C0F
+        jsr     check_item
 L6B68:  lda     #$01
         sta     checkitem_params::menu_item
         sta     checkitem_params::check
-        jsr     L6C0F
+        jsr     check_item
         lda     icon_params2
         jsr     icon_entry_lookup
         stax    $06
@@ -10959,12 +10542,14 @@ L6BF4:  lda     cached_window_id
 L6C0E:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
-L6C0F:  MGTK_RELAY_CALL MGTK::CheckItem, checkitem_params
+.proc check_item
+        MGTK_RELAY_CALL MGTK::CheckItem, checkitem_params
         rts
+.endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6C19
         ldx     cached_window_id
@@ -11001,10 +10586,10 @@ L6C5F:  txa
         asl     a
         tax
         lda     LE202,x
-        sta     $E71D
+        sta     LE71D
         sta     $06
         lda     LE202+1,x
-        sta     $E71E
+        sta     LE71D+1
         sta     $06+1
         lda     LCBANK2
         lda     LCBANK2
@@ -11014,10 +10599,10 @@ L6C5F:  txa
         lda     LCBANK1
         lda     LCBANK1
         tya
-        sta     $E71F
-        inc     $E71D
+        sta     LE71F
+        inc     LE71D
         bne     L6C8F
-        inc     $E71E
+        inc     LE71D+1
 
         ;; First row
 .proc L6C8F
@@ -11089,10 +10674,10 @@ L6D25:  pla
         jmp     L6CF3
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc clear_selection
-        lda     is_file_selected
+        lda     selected_icon_count
         bne     L6D31
         rts
 
@@ -11111,10 +10696,10 @@ L6D4D:  sta     getwinport_params2::window_id
         jsr     get_set_port2
         jsr     offset_grafport2_and_set
 L6D56:  lda     L6DB0
-        cmp     is_file_selected
+        cmp     selected_icon_count
         beq     L6D9B
         tax
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     icon_param
         jsr     icon_window_to_screen
         DESKTOP_RELAY_CALL $0B, icon_param
@@ -11124,29 +10709,29 @@ L6D56:  lda     L6DB0
         jmp     L6D56
 
 L6D7D:  lda     L6DB0
-        cmp     is_file_selected
+        cmp     selected_icon_count
         beq     L6D9B
         tax
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     icon_param
         DESKTOP_RELAY_CALL $0B, icon_param
         inc     L6DB0
         jmp     L6D7D
 
 L6D9B:  lda     #$00
-        ldx     is_file_selected
+        ldx     selected_icon_count
         dex
-L6DA1:  sta     selected_file_index,x
+L6DA1:  sta     selected_icon_list,x
         dex
         bpl     L6DA1
-        sta     is_file_selected
+        sta     selected_icon_count
         sta     selected_window_index
         jmp     reset_grafport3
 
 L6DB0:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc update_scrollbars
         ldx     active_window_id
@@ -11173,9 +10758,9 @@ config_port:
 
         ;; deactivate horizontal scrollbar
         lda     #MGTK::ctl_horizontal_scroll_bar
-        sta     activatectl_params_which_ctl
+        sta     activatectl_which_ctl
         lda     #MGTK::activatectl_deactivate
-        sta     activatectl_params_activate
+        sta     activatectl_activate
         jsr     activate_ctl
 
         jmp     check_vscroll
@@ -11183,9 +10768,9 @@ config_port:
 activate_hscroll:
         ;; activate horizontal scrollbar
         lda     #MGTK::ctl_horizontal_scroll_bar
-        sta     activatectl_params_which_ctl
+        sta     activatectl_which_ctl
         lda     #MGTK::activatectl_activate
-        sta     activatectl_params_activate
+        sta     activatectl_activate
         jsr     activate_ctl
         jsr     update_hthumb
 
@@ -11198,9 +10783,9 @@ check_vscroll:
 
         ;; deactivate vertical scrollbar
         lda     #MGTK::ctl_vertical_scroll_bar
-        sta     activatectl_params_which_ctl
+        sta     activatectl_which_ctl
         lda     #MGTK::activatectl_deactivate
-        sta     activatectl_params_activate
+        sta     activatectl_activate
         jsr     activate_ctl
 
         rts
@@ -11208,9 +10793,9 @@ check_vscroll:
 activate_vscroll:
         ;; activate vertical scrollbar
         lda     #MGTK::ctl_vertical_scroll_bar
-        sta     activatectl_params_which_ctl
+        sta     activatectl_which_ctl
         lda     #MGTK::activatectl_activate
-        sta     activatectl_params_activate
+        sta     activatectl_activate
         jsr     activate_ctl
         jmp     update_vthumb
 
@@ -11219,7 +10804,7 @@ activate_ctl:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cached_icons_window_to_screen
         lda     #0
@@ -11238,7 +10823,7 @@ done:   rts
 count:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc cached_icons_screen_to_window
         lda     #0
@@ -11257,7 +10842,7 @@ done:   rts
 index:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc offset_grafport2_impl
 
@@ -11279,7 +10864,7 @@ flag:   .byte   0
         offset_grafport2 := offset_grafport2_impl::flag_clear
         offset_grafport2_and_set := offset_grafport2_impl::flag_set
 
-;;; ==================================================
+;;; ============================================================
 
 .proc enable_various_file_menu_items
         lda     #MGTK::disablemenu_enable
@@ -11305,7 +10890,7 @@ flag:   .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6F0D
         ptr := $6
@@ -11338,7 +10923,7 @@ pathptr:        .addr   0
 pathlen:        .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6F4B
         ptr := $6
@@ -11368,7 +10953,7 @@ L6F64:  dec     L704B
 L6F8F:  rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L6F90
         ptr := $A
@@ -11394,7 +10979,7 @@ L6FA9:  cpy     #1
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; If 'set' version called, length in Y; otherwise use str len
 .proc L6FBD
@@ -11484,46 +11069,19 @@ flag:   .byte   0
 L704B:  .byte   0
 L704C:  .res    8
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L7054
         jmp     L70C5
 
-.proc open_params
-param_count:    .byte   3
-pathname:       .addr   L705D
-io_buffer:      .addr   $800
-ref_num:        .byte   0
-.endproc
+        DEFINE_OPEN_PARAMS open_params, L705D, $800
 
 L705D:  .res    65, 0
 
-.proc read_params
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   $0C00
-request_count:  .word   $200
-trans_count:    .word   0
-.endproc
+        DEFINE_READ_PARAMS read_params, $0C00, $200
+        DEFINE_CLOSE_PARAMS close_params
 
-.proc close_params
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
-
-.proc get_file_info_params4
-param_count:    .byte   $A
-pathname:       .addr   L705D
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params4, L705D
 
         .byte   0
 L70BB:  .word   0
@@ -11760,9 +11318,7 @@ L72F8:  copy16  get_file_info_params4::aux_type, L70BD
         lsr16   L70BD
         plp
         bcc     L7342
-        inc     L70BD
-        bne     L7342
-        inc     L70BD+1
+        inc16   L70BD
 L7342:  return  #0
 .endproc
         L70BB := L7054::L70BB
@@ -11770,7 +11326,7 @@ L7342:  return  #0
         L705D := L7054::L705D
         L72EC := L7054::L72EC
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L7345
         sta     L7445
@@ -11786,7 +11342,7 @@ L734A:  lda     LE1F1+1,x
 :       stx     L7446
         dex
 :       inx
-        lda     $E1F3,x
+        lda     LE1F1+2,x
         sta     LE1F1+1,x
         cpx     LE1F1
         bne     :-
@@ -11816,13 +11372,9 @@ L73A5:  lda     LCBANK2
         sta     ($06),y
         lda     LCBANK1
         lda     LCBANK1
-        inc     $06
-        bne     :+
-        inc     $06+1
-:       inc     $08
-        bne     :+
-        inc     $08+1
-:       lda     $08+1
+        inc16   $06
+        inc16   $08
+        lda     $08+1
         cmp     L485F+1
         bne     L73A5
         lda     $08
@@ -11862,13 +11414,13 @@ L7449:  .byte   0
 L744A:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L744B
         lda     cached_window_id
         asl     a
         tax
-        copy16  $E6BF,x, $08
+        copy16  LE6BF,x, $08
         ldy     #$09
         lda     ($06),y
         tay
@@ -11943,7 +11495,7 @@ L74D3:  tay
         pla
         asl     a
         tax
-        copy16  $E6BF,x, $08
+        copy16  LE6BF,x, $08
         ldy     #$00
         lda     ($06),y
         clc
@@ -11965,8 +11517,8 @@ L7512:  lda     ($06),y
         sta     LE1B0,y
         dey
         bpl     L7512
-        lda     #$2F
-        sta     $E1B1
+        lda     #'/'
+        sta     LE1B0+1
         inc     LE1B0
         ldx     LE1B0
         sta     LE1B0,x
@@ -12074,7 +11626,7 @@ L75FA:  ldx     cached_window_id
 L7620:  .byte   $00
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Icon entry construction
 
 L7621:  .byte   $00             ; window_id ?
@@ -12167,34 +11719,29 @@ L76BB:  bit     L7634
         lda     L7B66
         sbc     #$00
         sta     L7B66
-        cmp16   L7B63, #$AA
+        cmp16   L7B63, #170
         bmi     L7705
-        cmp16   L7B63, #$1C2
+        cmp16   L7B63, #450
         bpl     L770C
         ldax    L7B63
         jmp     L7710
 
-L7705:  lda     #$AA
-        ldx     #$00
-        jmp     L7710
+L7705:  addr_jump L7710, $00AA
 
-L770C:  lda     #$C2
-        ldx     #$01
+L770C:  ldax    #$01C2
 L7710:  ldy     #$20
         sta     ($06),y
         txa
         iny
         sta     ($06),y
-        cmp16   L7B65, #$32
+        cmp16   L7B65, #50
         bmi     L7739
-        cmp16   L7B65, #$6C
+        cmp16   L7B65, #108
         bpl     L7740
         ldax    L7B65
         jmp     L7744
 
-L7739:  lda     #$32
-        ldx     #$00
-        jmp     L7744
+L7739:  addr_jump L7744, $0032
 
 L7740:  ldax    #$6C
 L7744:  ldy     #$22
@@ -12219,7 +11766,7 @@ L7767:  .byte   $14
 .endproc
         L763A := L7635::L763A
 
-;;; ==================================================
+;;; ============================================================
 ;;; Create icon
 
 .proc L7768
@@ -12307,7 +11854,7 @@ L7826:  copy16  L762C, L7632
         lda     L762F
         cmp     L762E
         bne     L7862
-        add16   L762C, #$20, L762C
+        add16   L762C, #32, L762C
         copy16  L7626, L762A
         lda     #$00
         sta     L762F
@@ -12333,14 +11880,14 @@ L7870:  lda     cached_window_id
         dex
         lda     cached_window_icon_list,x
         jsr     icon_screen_to_window
-        add16   $06, #$20, $06
+        add16   $06, #32, $06
         rts
 
         .byte   0
         .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc find_icon_details_for_file_type
         ptr := $6
@@ -12384,7 +11931,7 @@ file_type:
         .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw header (items/k in disk/k available/lines)
 
 .proc draw_window_header
@@ -12610,7 +12157,7 @@ nonzero_flag:                ; high bit set once a non-zero digit seen
 
 .endproc ; draw_window_header
 
-;;; ==================================================
+;;; ============================================================
 
 L7B5F:  .byte   0
 L7B60:  .byte   0
@@ -12647,8 +12194,7 @@ L7B6F:  sta     L7B63,x
         bpl     L7BCB
         lda     cached_window_icon_count
         bne     L7BA1
-L7B96:  lda     #$00
-        ldx     #$03
+L7B96:  ldax    #$0300
 L7B9A:  sta     L7B5F,x
         dex
         bpl     L7B9A
@@ -12701,8 +12247,8 @@ L7C05:  lda     L7B65
         sta     L7B65
         bcc     L7C13
         inc     L7B66
-L7C13:  sub16   L7B5F, #$32, L7B5F
-        sub16   L7B61, #$0F, L7B61
+L7C13:  sub16   L7B5F, #50, L7B5F
+        sub16   L7B61, #15, L7B61
         rts
 
 L7C36:  tax
@@ -12783,7 +12329,7 @@ L7D5B:  .byte   0
 L7D5C:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L7D5D
         jsr     window_lookup
@@ -12825,7 +12371,7 @@ L7D9A:  .word   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L7D9C
         jmp     L7D9F
@@ -12892,8 +12438,7 @@ L7E0C:  lda     LCBANK1
 
 L7E20:  lda     LCBANK2
         lda     LCBANK2
-        lda     #$5A
-        ldx     #$0F
+        ldax    #$0F5A
 L7E2A:  sta     $0808,x
         dex
         bpl     L7E2A
@@ -12949,8 +12494,7 @@ L7E90:  inc     $0805
         lda     ($06),y
         ora     #$80
         sta     ($06),y
-        lda     #$5A
-        ldx     #$0F
+        ldax    #$0F5A
 L7EA8:  sta     $0808,x
         dex
         bpl     L7EA8
@@ -13178,7 +12722,7 @@ L809E:  inc     $0805
         jmp     L8051
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L80CA
 
@@ -13208,7 +12752,7 @@ L809E:  inc     $0805
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L80F5
         lda     #$00
@@ -13238,7 +12782,7 @@ L8124:  lda     LCBANK1
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L812B
         lda     LCBANK1
@@ -13250,7 +12794,7 @@ L8124:  lda     LCBANK1
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L813F_impl
 
@@ -13274,16 +12818,16 @@ start:  ldy     #$00
         asl     a
         rol     L813C
         clc
-        adc     $E71D
+        adc     LE71D
         sta     $06
-        lda     $E71E
+        lda     LE71D+1
         adc     L813C
         sta     $06+1
         lda     LCBANK2
         lda     LCBANK2
         ldy     #$1F
 L8171:  lda     ($06),y
-        sta     $EC43,y
+        sta     LEC43,y
         dey
         bpl     L8171
         lda     LCBANK1
@@ -13344,19 +12888,19 @@ L81F7:  jsr     prepare_col_name
 .endproc
         L813F := L813F_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
 .proc prepare_col_name
-        lda     $EC43
+        lda     LEC43
         and     #$0F
         sta     text_buffer2::length
         tax
-loop:   lda     $EC43,x
-        sta     $E6EC,x
+loop:   lda     LEC43,x
+        sta     text_buffer2::data,x
         dex
         bne     loop
         lda     #' '
-        sta     $E6EC
+        sta     text_buffer2::data
         inc     text_buffer2::length
         addr_call capitalize_string, text_buffer2::length
         rts
@@ -13378,7 +12922,7 @@ loop:   lda     LDFC5,x
         ;; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Populate text_buffer2 with " 12345 Blocks"
 
 .proc compose_blocks_string
@@ -13470,7 +13014,7 @@ L830B:  sta     text_buffer2::length
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 compose_date_string:
         ldx     #21
@@ -13651,7 +13195,7 @@ L84CF:  .byte   0
 L84D0:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L84D1
         jsr     push_zp_addrs
@@ -13660,7 +13204,7 @@ L84D0:  .byte   0
         jsr     cached_icons_window_to_screen
 L84DC:  sub16   grafport2::cliprect::x2, grafport2::cliprect::x1, L85F8
         sub16   grafport2::cliprect::y2, grafport2::cliprect::y1, L85FA
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_down
         bne     L850C
         asl     a
@@ -13747,7 +13291,7 @@ L85F9:  .byte   0
 L85FA:  .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Double Click Detection
 ;;; Returns with A=0 if double click, A=$FF otherwise.
 
@@ -13758,7 +13302,7 @@ L85FA:  .word   0
 
         ;; Stash initial coords
         ldx     #3
-:       lda     event_params_coords,x
+:       lda     event_coords,x
         sta     coords,x
         sta     saved_event_coords,x
         dex
@@ -13786,7 +13330,7 @@ loop:   dec     counter
         lda     #$FF            ; ???
         sta     unused
 
-        lda     event_params_kind
+        lda     event_kind
         sta     state           ; unused ???
 
         cmp     #MGTK::event_kind_no_event
@@ -13808,11 +13352,11 @@ exit:   return  #$FF            ; not double-click
         ;; Is the new coord within range of the old coord?
 .proc check_delta
         ;; compute x delta
-        lda     event_params_xcoord
+        lda     event_xcoord
         sec
         sbc     xcoord
         sta     delta
-        lda     event_params_xcoord+1
+        lda     event_xcoord+1
         sbc     xcoord+1
         bpl     :+
 
@@ -13828,11 +13372,11 @@ fail:   return  #$FF
         bcs     fail
 
         ;; compute y delta
-check_y:lda     event_params_ycoord
+check_y:lda     event_ycoord
         sec
         sbc     ycoord
         sta     delta
-        lda     event_params_ycoord+1
+        lda     event_ycoord+1
         sbc     ycoord+1
         bpl     :+
 
@@ -13860,7 +13404,7 @@ unused: .byte   0               ; ???
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; A = A * 16, high bits into X
 
 .proc a_times_16
@@ -13880,7 +13424,7 @@ unused: .byte   0               ; ???
 tmp:    .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; A = A * 64, high bits into X
 
 .proc a_times_64
@@ -13904,7 +13448,7 @@ tmp:    .byte   0
 tmp:    .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Look up file address. Index in A, address in A,X.
 
 .proc icon_entry_lookup
@@ -13918,7 +13462,7 @@ tmp:    .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Look up window. Index in A, address in A,X.
 
 .proc window_lookup
@@ -13932,7 +13476,7 @@ tmp:    .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Look up window address. Index in A, address in A,X.
 
 .proc window_address_lookup
@@ -13946,7 +13490,7 @@ tmp:    .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L8707
         sta     L877F
@@ -13976,10 +13520,7 @@ L8736:  lda     ($06),y
         stx     LDFC5
         rts
 
-L8745:  lda     #$04
-        sta     LDFC5
-        lda     #$20
-        sta     LDFC6
+L8745:  copy16  #$2004, LDFC5
         lda     #$24
         sta     LDFC7
         lda     L877F
@@ -14011,7 +13552,7 @@ L877F:  .byte   0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw text, pascal string address in A,X
 
 .proc draw_pascal_string
@@ -14024,14 +13565,12 @@ L877F:  .byte   0
         lda     (textptr),y
         beq     exit
         sta     textlen
-        inc     textptr
-        bne     :+
-        inc     textptr+1
-:       MGTK_RELAY_CALL MGTK::DrawText, params
+        inc16   textptr
+        MGTK_RELAY_CALL MGTK::DrawText, params
 exit:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Measure text, pascal string address in A,X; result in A,X
 
 .proc measure_text1
@@ -14043,15 +13582,13 @@ exit:   rts
         ldy     #0
         lda     (ptr),y
         sta     len
-        inc     ptr
-        bne     :+
-        inc     ptr+1
-:       MGTK_RELAY_CALL MGTK::TextWidth, ptr
+        inc16   ptr
+        MGTK_RELAY_CALL MGTK::TextWidth, ptr
         ldax    result
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc capitalize_string
         ptr := $A
@@ -14098,7 +13635,7 @@ check:  iny
         jmp     next
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Pushes two words from $6/$8 to stack
 
 .proc push_zp_addrs
@@ -14125,7 +13662,7 @@ loop:   lda     ptr,x
 addr:   .addr   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Pops two words from stack to $6/$8
 
 .proc pop_zp_addrs
@@ -14152,7 +13689,7 @@ loop:   pla
 addr:   .addr   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 port_copy:
         .res    MGTK::grafport_size+1
@@ -14197,7 +13734,7 @@ port_copy:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Convert icon's coordinates from screen to window (direction???)
 ;;; (icon index in A, active window)
 
@@ -14285,7 +13822,7 @@ pos_win:        .word   0, 0
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Convert icon's coordinates from window to screen (direction???)
 ;;; (icon index in A, active window)
 
@@ -14375,7 +13912,7 @@ pos_screen:     .word   0, 0
 pos_win:        .word   0, 0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc zero_grafport5_coords
         lda     #0
@@ -14390,15 +13927,11 @@ pos_win:        .word   0, 0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 gdi_data_buffer := $800
 
-.proc on_line_params
-param_count:    .byte   2
-unit_num:       .byte   0
-data_buffer:    .addr   gdi_data_buffer
-.endproc
+        DEFINE_ON_LINE_PARAMS on_line_params,, gdi_data_buffer
 
 .proc get_device_info
         sta     unit_number
@@ -14563,30 +14096,27 @@ selected_device_icon:
         return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 unit_number:    .byte   0
 device_num:     .byte   0
 
 desktop_icon_coords_table:
         DEFINE_POINT 0,0
-        DEFINE_POINT $1EA,$10
-        DEFINE_POINT $1EA,$2D
-        DEFINE_POINT $1EA,$4B
-        DEFINE_POINT $1EA,$67
-        DEFINE_POINT $1EA,$83
-        DEFINE_POINT $190,$A0
-        DEFINE_POINT $136,$A0
-        DEFINE_POINT $DC,$A0
-        DEFINE_POINT $82,$A0
-        DEFINE_POINT $28,$A0
+        DEFINE_POINT 490,16
+        DEFINE_POINT 490,45
+        DEFINE_POINT 490,75
+        DEFINE_POINT 490,103
+        DEFINE_POINT 490,131
+        DEFINE_POINT 400,160
+        DEFINE_POINT 310,160
+        DEFINE_POINT 220,160
+        DEFINE_POINT 130,160
+        DEFINE_POINT 40,160
 
-.proc get_prefix_params
-param_count:    .byte   1
-data_buffer:    .addr   $4824
-.endproc
+        DEFINE_GET_PREFIX_PARAMS get_prefix_params, L4824
 
-;;; ==================================================
+;;; ============================================================
 
 .proc remove_icon_from_window
         ldx     cached_window_icon_count
@@ -14609,7 +14139,7 @@ remove: lda     cached_window_icon_list+1,x
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L8B19:  jsr     push_zp_addrs
         jmp     L8B2E
@@ -14648,27 +14178,29 @@ skip:   lda     icon_params2
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L8B5C
         ldy     #$80
-        bne     L8B62
+        bne     :+
 L8B60:  ldy     #$00
-L8B62:  sty     L8D4A
+:       sty     L8D4A
         stax    L8D4B
         txa
         jsr     window_lookup
         stax    $06
+
         lda     #$14
         clc
         adc     #$23
         tay
         ldx     #$23
-L8B7B:  lda     ($06),y
+:       lda     ($06),y
         sta     grafport2,x
         dey
         dex
-        bpl     L8B7B
+        bpl     :-
+
         lda     L8D4B
         jsr     icon_entry_lookup
         stax    $06
@@ -14721,9 +14253,7 @@ L8BC1:  lda     grafport2,x
         lda     L8D51
         eor     #$FF
         sta     L8D51
-        inc     L8D50
-        bne     L8C6A
-        inc     L8D51
+        inc16   L8D50
 L8C6A:  bit     L8D53
         bpl     L8C8C
         lda     #$80
@@ -14734,9 +14264,7 @@ L8C6A:  bit     L8D53
         lda     L8D53
         eor     #$FF
         sta     L8D53
-        inc     L8D52
-        bne     L8C8C
-        inc     L8D53
+        inc16   L8D52
 L8C8C:  lsr16   L8D50
         lsr16   L8D52
         lsr16   L8D54
@@ -14749,11 +14277,12 @@ L8C8C:  lsr16   L8D50
         asl     a
         tax
         bit     L8D4E
-        bpl     L8CC9
+        bpl     :+
         sub16   L0800, L8D50, L0800,x
         jmp     L8CDC
 
-L8CC9:  add16   L0800, L8D50, L0800,x
+:       add16   L0800, L8D50, L0800,x
+
 L8CDC:  bit     L8D4F
         bpl     L8CF7
         sub16   $0802, L8D52, $0802,x
@@ -14792,7 +14321,7 @@ L8D56:  .word   0
 .endproc
         L8B60 := L8B5C::L8B60
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L8D58
         lda     #$00
@@ -14806,15 +14335,17 @@ L8D6C:  lda     L8DB2
         asl     a
         asl     a
         asl     a
+
         clc
-        adc     #$07
+        adc     #7
         tax
         ldy     #7
-L8D7C:  lda     L0800,x
+:       lda     L0800,x
         sta     rect_E230,y
         dex
         dey
-        bpl     L8D7C
+        bpl     :-
+
         jsr     draw_rect_E230
 L8D89:  lda     L8DB2
         sec
@@ -14842,7 +14373,7 @@ L8DA7:  inc     L8DB2
 L8DB2:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L8DB3
         lda     #$0B
@@ -14850,7 +14381,8 @@ L8DB2:  .byte   0
         jsr     reset_grafport3
         MGTK_RELAY_CALL MGTK::SetPattern, checkerboard_pattern3
         jsr     set_penmode_xor
-L8DC7:  lda     L8E0F
+
+loop:   lda     L8E0F
         bmi     L8DE4
         beq     L8DE4
         asl     a
@@ -14859,12 +14391,14 @@ L8DC7:  lda     L8E0F
         clc
         adc     #$07
         tax
+
         ldy     #7
-L8DD7:  lda     L0800,x
+:       lda     L0800,x
         sta     rect_E230,y
         dex
         dey
-        bpl     L8DD7
+        bpl     :-
+
         jsr     draw_rect_E230
 L8DE4:  lda     L8E0F
         clc
@@ -14887,20 +14421,20 @@ L8DF7:  lda     L0800,x
 L8E04:  dec     L8E0F
         lda     L8E0F
         cmp     #$FD
-        bne     L8DC7
+        bne     loop
         rts
 
 L8E0F:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc draw_rect_E230
         MGTK_RELAY_CALL MGTK::FrameRect, rect_E230
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Dynamically load parts of Desktop2
 
 ;;; Call load_dynamic_routine or restore_dynamic_routine
@@ -14931,34 +14465,15 @@ len_table:
 addr_table:
         .addr   $0800,$0800,$9000,$5000,$7000,$7000,$7000,$5000,$9000
 
-.proc open_params
-param_count:    .byte   3
-pathname:       .addr   str_desktop2
-io_buffer:      .addr   $1C00
-ref_num:        .byte   0
-.endproc
+        DEFINE_OPEN_PARAMS open_params, str_desktop2, $1C00
 
 str_desktop2:
         PASCAL_STRING "DeskTop2"
 
-.proc set_mark_params
-param_count:    .byte   2
-ref_num:        .byte   0
-position:       .faraddr 0
-.endproc
+        DEFINE_SET_MARK_PARAMS set_mark_params, 0
 
-.proc read_params
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   0
-request_count:  .word   0
-trans_count:    .word   0
-.endproc
-
-.proc close_params
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
+        DEFINE_READ_PARAMS read_params, 0, 0
+        DEFINE_CLOSE_PARAMS close_params
 
 restore_flag:
         .byte   0
@@ -15015,7 +14530,7 @@ open:   MLI_RELAY_CALL OPEN, open_params
         load_dynamic_routine := load_dynamic_routine_impl::load
         restore_dynamic_routine := load_dynamic_routine_impl::restore
 
-;;; ==================================================
+;;; ============================================================
 
 L8F00:  jmp     L8FC5
         jmp     rts2            ; rts
@@ -15032,7 +14547,7 @@ L8F1B:  jmp     L8F5B           ; cmd_delete_file ???
 L8F24:  jmp     L8F7E           ; cmd_selector_action ???
 L8F27:  jmp     L8FB8           ; cmd_get_size
 
-;;; ==================================================
+;;; ============================================================
 
         ;;  TODO: Break this down more?
 .proc L8F2A
@@ -15044,10 +14559,7 @@ L8F27:  jmp     L8FB8           ; cmd_get_size
         jsr     L993E
         jsr     LA271
         jsr     L9968
-L8F3F:  lda     #$FF
-        sta     LE05B
-        lda     #$00
-        sta     LE05C
+L8F3F:  copy16  #$00FF, LE05B
         jsr     L9A0D
         jsr     L917F
 L8F4F:  jsr     L91E8
@@ -15224,7 +14736,7 @@ L90D8:  jsr     LA241
         jmp     L90DE
 
 L90DE:  jsr     L91F5
-        lda     is_file_selected
+        lda     selected_icon_count
         bne     L90E9
         jmp     L9168
 
@@ -15232,7 +14744,7 @@ L90E9:  ldx     #$00
         stx     L917A
 L90EE:  jsr     L91F5
         ldx     L917A
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         cmp     #$01
         beq     L9140
         jsr     icon_entry_name_lookup
@@ -15266,7 +14778,7 @@ L9137:  jsr     LA271
 L913D:  jsr     LA271
 L9140:  inc     L917A
         ldx     L917A
-        cpx     is_file_selected
+        cpx     selected_icon_count
         bne     L90EE
         lda     L97E4
         bne     L9168
@@ -15298,7 +14810,7 @@ L917B:  .byte   0
         L8FB8 := L8F2A::L8FB8
         L8FC5 := L8F2A::L8FC5
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Dynamically constructed jump table???
         L917D := *+1
@@ -15319,23 +14831,17 @@ L918B:  .byte   0
 L918C:  .byte   0
 L918D:  .byte   0
 
-;;; ==================================================
+;;; ============================================================
 ;;; For icon index in A, put pointer to name in $6
 
 .proc icon_entry_name_lookup
         asl     a
         tay
-        lda     icon_entry_address_table,y
-        clc
-        adc     #icon_entry_offset_len
-        sta     $06
-        lda     icon_entry_address_table+1,y
-        adc     #0
-        sta     $06+1
+        add16   icon_entry_address_table,y, #icon_entry_offset_len, $06
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc join_paths
         str1 := $8
@@ -15381,7 +14887,7 @@ done:   stx     buf
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L91D5:  yax_call JT_MGTK_RELAY, MGTK::InitPort, grafport3
         yax_call JT_MGTK_RELAY, MGTK::SetPort, grafport3
@@ -15405,13 +14911,13 @@ L9211:  .addr   0
 .endproc
 
 .proc L9213
-        lda     is_file_selected
+        lda     selected_icon_count
         bne     :+
         rts
-:       ldx     is_file_selected
+:       ldx     selected_icon_count
         stx     L0800
         dex
-:       lda     selected_file_index,x
+:       lda     selected_icon_list,x
         sta     $0801,x
         dex
         bpl     :-
@@ -15501,7 +15007,7 @@ found:  lda     DEVLST,y        ;
         lsr     a
         plp
         adc     #1
-        sta     control_params_unit_number
+        sta     control_unit_number
 
         jsr     call
         .byte   $04             ; $04 = CONTROL
@@ -15515,7 +15021,7 @@ unit_number:    .byte   $0
 control_list:   .addr   list
 control_code:   .byte   4       ; Eject disk
 .endproc
-        control_params_unit_number := control_params::unit_number
+        control_unit_number := control_params::unit_number
 list:   .word   0               ; 0 items in list
 unit_num:
         .byte   0
@@ -15523,28 +15029,11 @@ unit_num:
         .byte   0               ; unused???
 .endproc
 
-.proc get_file_info_params5
-param_count:    .byte   $A
-pathname:       .addr   $220
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params5, $220
 
 L92DB:  .byte   0,0
 
-.proc block_params
-param_count:    .byte   $03
-unit_num:       .byte   $0
-data_buffer:    .addr   $0800
-block_num:      .word   $A
-.endproc
+        DEFINE_READ_BLOCK_PARAMS block_params, $0800, $A
 
 L92E3:  .byte   $00
 L92E4:  .word   0
@@ -15552,7 +15041,7 @@ L92E6:  .byte   $00
 
 
 .proc L92E7
-        lda     is_file_selected
+        lda     selected_icon_count
         bne     L92ED
         rts
 
@@ -15560,7 +15049,7 @@ L92ED:  lda     #$00
         sta     L92E6
         jsr     L91D5
 L92F5:  ldx     L92E6
-        cpx     is_file_selected
+        cpx     selected_icon_count
         bne     L9300
         jmp     L9534
 
@@ -15570,7 +15059,7 @@ L9300:  lda     selected_window_index
         tax
         copy16  window_address_table,x, $08
         ldx     L92E6
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         jsr     join_paths
         ldy     #$00
@@ -15583,7 +15072,7 @@ L931F:  lda     path_buf3,y
         jmp     L9356
 
 L9331:  ldx     L92E6
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         cmp     #$01
         bne     L933E
         jmp     L952E
@@ -15609,7 +15098,7 @@ L9366:  lda     selected_window_index
         lda     L92E6
         clc
         adc     #$01
-        cmp     is_file_selected
+        cmp     selected_icon_count
         beq     L9381
         inc     L92E3
         inc     L92E3
@@ -15621,7 +15110,7 @@ L9387:  lda     #$81
         lda     L92E6
         clc
         adc     #$01
-        cmp     is_file_selected
+        cmp     selected_icon_count
         beq     L939D
         inc     L92E3
         inc     L92E3
@@ -15629,7 +15118,7 @@ L939D:  jsr     launch_get_info_dialog
         lda     #$00
         sta     L942E
         ldx     L92E6
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         ldy     #$0F
 L93AD:  cmp     devlst_copy,y
         beq     L93B8
@@ -15647,7 +15136,7 @@ L93B8:  lda     DEVLST,y
         lda     #$80
         sta     L942E
 L93DB:  ldx     L92E6
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         lda     #$01
         sta     L92E3
@@ -15719,7 +15208,7 @@ L9486:  jsr     JT_SIZE_STRING
         jsr     L9549
         ldx     $220
         ldy     #$00
-L9491:  lda     $E6EC,y
+L9491:  lda     text_buffer2::data,y
         sta     $0221,x
         inx
         iny
@@ -15781,15 +15270,15 @@ L953A:  PASCAL_STRING " VOL"
 .endproc
 
 L9549:  ldx     #$00
-L954B:  lda     $E6EC,x
+L954B:  lda     text_buffer2::data,x
         cmp     #$20
         bne     L9555
         inx
         bne     L954B
 L9555:  ldy     #$00
         dex
-L9558:  lda     $E6EC,x
-        sta     $E6EC,y
+L9558:  lda     text_buffer2::data,x
+        sta     text_buffer2::data,y
         iny
         inx
         cpx     text_buffer2::length
@@ -15799,14 +15288,11 @@ L9558:  lda     $E6EC,x
 .endproc
         L92F5 := L92E7::L92F5
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9571_impl
-.proc rename_params
-param_count:    .byte   2
-pathname:       .addr   $220
-new_pathname:   .addr   $1FC0
-.endproc
+
+        DEFINE_RENAME_PARAMS rename_params, $220, $1FC0
 
 rename_dialog_params:
         .byte   0
@@ -15816,12 +15302,12 @@ start:
         lda     #$00
         sta     L9706
 L9576:  lda     L9706
-        cmp     is_file_selected
+        cmp     selected_icon_count
         bne     L9581
         return  #0
 
 L9581:  ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         cmp     #$01
         bne     L9591
         inc     L9706
@@ -15833,7 +15319,7 @@ L9591:  lda     selected_window_index
         tax
         copy16  window_address_table,x, $08
         ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         jsr     join_paths
         ldy     #$00
@@ -15846,7 +15332,7 @@ L95B0:  lda     path_buf3,y
         jmp     L95E0
 
 L95C2:  ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         ldy     #$00
 L95CD:  lda     ($06),y
@@ -15858,7 +15344,7 @@ L95CD:  lda     ($06),y
         lda     #'/'
         sta     $0221
 L95E0:  ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         ldy     #$00
         lda     ($06),y
@@ -15885,7 +15371,7 @@ L9611:  lda     #$80
         jsr     L96F8
         beq     L962F
 L9618:  ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         ldy     $1F12
 L9624:  lda     $1F12,y
@@ -15940,12 +15426,12 @@ L9696:  lda     #$40
 L969E:  lda     #$40
         jsr     L96F8
         ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         sta     LE22B
         yax_call JT_DESKTOP_RELAY, $E, LE22B
         copy16  L9707, $08
         ldx     L9706
-        lda     selected_file_index,x
+        lda     selected_icon_list,x
         jsr     icon_entry_name_lookup
         ldy     #$00
         lda     ($08),y
@@ -15954,9 +15440,7 @@ L969E:  lda     #$40
         sta     ($06),y
         lda     ($08),y
         tay
-        inc     $06
-        bne     L96DA
-        inc     $06+1
+        inc16   $06
 L96DA:  lda     ($08),y
         sta     ($06),y
         dey
@@ -15985,177 +15469,48 @@ L9709:  .byte   $00
 .endproc
         L9571 := L9571_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
-.proc open_params3
-param_count:    .byte   3
-pathname:       .addr   $220
-io_buffer:      .addr   $800
-ref_num:        .byte   0
-.endproc
-
-.proc read_params3
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   L9718
-request_count:  .word   4
-trans_count:    .word   0
-.endproc
+        DEFINE_OPEN_PARAMS open_params3, $220, $800
+        DEFINE_READ_PARAMS read_params3, L9718, 4
 
 L9718:  .res    4, 0
 
-.proc close_params6
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
-
-.proc read_params4
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   L97AD
-request_count:  .word   $27
-trans_count:    .word   0
-.endproc
-
-.proc read_params5
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   L972E
-request_count:  .word   5
-trans_count:    .word   0
-.endproc
+        DEFINE_CLOSE_PARAMS close_params6
+        DEFINE_READ_PARAMS read_params4, L97AD, $27
+        DEFINE_READ_PARAMS read_params5, L972E, 5
 
 L972E:  .res    5, 0
 
         .res    4, 0
 
-.proc close_params5
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
-
-.proc close_params3
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
-
-.proc destroy_params
-param_count:    .byte   1
-pathname:       .addr   $0220
-.endproc
-
-.proc open_params4
-param_count:    .byte   3
-pathname:       .addr   $220
-io_buffer:      .addr   $0D00
-ref_num:        .byte   0
-.endproc
-
-.proc open_params5
-param_count:    .byte   3
-pathname:       .addr   $1FC0
-io_buffer:      .addr   $1100
-ref_num:        .byte   0
-.endproc
-
-.proc read_params6
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   $1500
-request_count:  .word   $AC0
-trans_count:    .word   0
-.endproc
-
-.proc write_params
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   $1500
-request_count:  .word   $AC0
-trans_count:    .word   0
-.endproc
-
-.proc create_params3
-param_count:    .byte   7
-pathname:       .addr   $1FC0
-access: .byte   %11000011
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
-
-.proc create_params2
-param_count:    .byte   7
-pathname:       .addr   $1FC0
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_CLOSE_PARAMS close_params5
+        DEFINE_CLOSE_PARAMS close_params3
+        DEFINE_DESTROY_PARAMS destroy_params, $220
+        DEFINE_OPEN_PARAMS open_params4, $220, $0D00
+        DEFINE_OPEN_PARAMS open_params5, $1FC0, $1100
+        DEFINE_READ_PARAMS read_params6, $1500, $AC0
+        DEFINE_WRITE_PARAMS write_params, $1500, $AC0
+        DEFINE_CREATE_PARAMS create_params3, $1FC0, ACCESS_DEFAULT
+        DEFINE_CREATE_PARAMS create_params2, $1FC0
 
         .byte   $00,$00
 
-.proc file_info_params2
-param_count:    .byte   $A
-pathname:       .addr   $220
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS file_info_params2, $220
 
         .byte   0
 
-.proc file_info_params3
-param_count:    .byte   $A
-pathname:       .addr   $1FC0
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS file_info_params3, $1FC0
 
         .byte   0
 
-.proc set_eof_params
-param_count:    .byte   2
-ref_num:        .byte   0
-eof:    .faraddr 0
-.endproc
-
-.proc mark_params
-param_count:    .byte   2
-ref_num:        .byte   0
-position:       .faraddr 0
-.endproc
-
-.proc mark_params2
-param_count:    .byte   2
-ref_num:        .byte   0
-position:       .faraddr 0
-.endproc
-
-.proc on_line_params2
-param_count:    .byte   2
-unit_num:       .byte   0
-data_buffer:    .addr   $800
-.endproc
+        DEFINE_SET_EOF_PARAMS set_eof_params, 0
+        DEFINE_SET_MARK_PARAMS mark_params, 0
+        DEFINE_SET_MARK_PARAMS mark_params2, 0
+        DEFINE_ON_LINE_PARAMS on_line_params2,, $800
 
 
-;;; ==================================================
+;;; ============================================================
 
 
 L97AD:  .res    16, 0
@@ -16170,24 +15525,24 @@ rts2:   rts
 L97E4:  .byte   $00
 
 
-L97E5:  ldx     $E10C
+L97E5:  ldx     LE10C
         lda     LE061
         sta     LE062,x
         inx
-        stx     $E10C
+        stx     LE10C
         rts
 
-L97F3:  ldx     $E10C
+L97F3:  ldx     LE10C
         dex
         lda     LE062,x
         sta     LE061
-        stx     $E10C
+        stx     LE10C
         rts
 
 .proc L9801
         lda     #$00
         sta     LE05F
-        sta     $E10D
+        sta     LE10D
 L9809:  yax_call JT_MLI_RELAY, OPEN, open_params3
         beq     L981E
         ldx     #$80
@@ -16234,12 +15589,12 @@ L9864:  yax_call JT_MLI_RELAY, READ, read_params4
         beq     L9864
         jmp     LA39F
 
-L987D:  inc     $E10D
-        lda     $E10D
+L987D:  inc     LE10D
+        lda     LE10D
         cmp     LE05E
         bcc     L989C
         lda     #$00
-        sta     $E10D
+        sta     LE10D
         lda     LE060
         sta     read_params5::ref_num
         yax_call JT_MLI_RELAY, READ, read_params5
@@ -16248,7 +15603,7 @@ L989C:  return  #0
 L989F:  return  #$FF
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L98A2:  lda     LE05F
         sta     LE061
@@ -16388,13 +15743,10 @@ L99EB:  lda     #4
 
 L99FE:  jmp     LA39F
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9A01
-        lda     #$80
-        sta     LE05B
-        lda     #$00
-        sta     LE05C
+        copy16  #$0080, LE05B
         beq     L9A0F
 L9A0D:  lda     #$FF
 L9A0F:  sta     L9B31
@@ -16466,7 +15818,7 @@ L9AAA:  lda     file_info_params2,y
         dey
         cpy     #$02
         bne     L9AAA
-        lda     #%11000011
+        lda     #ACCESS_DEFAULT
         sta     create_params2::access
         lda     LE05B
         beq     L9B23
@@ -16531,11 +15883,11 @@ L9B31:  .byte   0
 L9B32:  .byte   0
 
 
-;;; ==================================================
+;;; ============================================================
 
 L9B33:  jmp     LA360
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9B36
         jsr     check_escape_key_down
@@ -16592,12 +15944,12 @@ L9BBB:  jsr     LA360
 L9BBE:  rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L9BBF:  yax_call launch_dialog, index_copy_file_dialog, L9937
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9BC9
         yax_call JT_MLI_RELAY, GET_FILE_INFO, file_info_params3
@@ -16615,7 +15967,7 @@ L9BFE:  rts
 L9BFF:  .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 L9C01:  jsr     L9C1A
         bcc     L9C19
@@ -16630,7 +15982,7 @@ L9C13:  lda     #3
         sec
 L9C19:  rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9C1A
         yax_call JT_MLI_RELAY, GET_FILE_INFO, file_info_params2
@@ -16694,7 +16046,7 @@ L9CD8:  .byte   0
 L9CD9:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9CDA
         jsr     decrement_LA2ED
@@ -16895,7 +16247,7 @@ L9ED3:  lda     #$05
         sta     L9E79
         jmp     LA044
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9EDB
         lda     #$03
@@ -16960,7 +16312,7 @@ L9F62:  yax_call JT_MLI_RELAY, GET_FILE_INFO, file_info_params2
         lda     file_info_params2::access
         and     #$80
         bne     L9F8D
-        lda     #$C3
+        lda     #ACCESS_DEFAULT
         sta     file_info_params2::access
         lda     #7              ; param count for SET_FILE_INFO
         sta     file_info_params2
@@ -16975,7 +16327,7 @@ L9F8E:  jsr     show_error_alert
         jmp     L9F29
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L9F94
         jsr     check_escape_key_down
@@ -17018,7 +16370,7 @@ L9FC2:  yax_call JT_MLI_RELAY, DESTROY, destroy_params
         bne     LA001
 L9FFE:  jmp     LA39F
 
-LA001:  lda     #$C3
+LA001:  lda     #ACCESS_DEFAULT
         sta     file_info_params2::access
         lda     #7              ; param count for SET_FILE_INFO
         sta     file_info_params2
@@ -17038,7 +16390,7 @@ LA022:  jmp     remove_path_segment_220
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LA02E:  yax_call JT_MLI_RELAY, DESTROY, destroy_params
         beq     LA043
@@ -17124,7 +16476,7 @@ LA100:  yax_call launch_dialog, index_lock_dialog, LA054
 LA10A:  yax_call launch_dialog, index_unlock_dialog, LA054
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA114
         lda     #$03
@@ -17183,7 +16535,7 @@ LA18A:  lda     file_info_params2::storage_type
         beq     LA1C0
         bit     L918B
         bpl     LA19E
-        lda     #%11000011
+        lda     #ACCESS_DEFAULT
         bne     LA1A0
 LA19E:  lda     #$21
 LA1A0:  sta     file_info_params2::access
@@ -17236,7 +16588,7 @@ LA241:  rts
 
 LA242:  .addr   LA2AE,rts2,rts2
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA248
         lda     #$00
@@ -17259,7 +16611,7 @@ LA26A:  sta     BITMAP,y
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA271
         jsr     LA379
@@ -17289,7 +16641,7 @@ LA2A9:  .byte   0
 LA2AA:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LA2AB:  jmp     LA2AE
 
@@ -17299,10 +16651,8 @@ LA2AE:  bit     L9189
         yax_call JT_MLI_RELAY, GET_FILE_INFO, file_info_params2
         bne     :+
         add16   LA2EF, file_info_params2::blocks_used, LA2EF
-:       inc     LA2ED
-        bne     :+
-        inc     LA2ED+1
-:       bit     L9189
+:       inc16     LA2ED
+        bit     L9189
         bvc     :+
         jsr     remove_path_segment_220
 :       ldax    LA2ED
@@ -17311,7 +16661,7 @@ LA2AE:  bit     L9189
 LA2ED:  .word   0
 LA2EF:  .word   0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc decrement_LA2ED
         lda     LA2ED
@@ -17321,7 +16671,7 @@ LA2EF:  .word   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Append name at L97AD to path at $220
 
 .proc append_to_path_220
@@ -17349,7 +16699,7 @@ done:   sty     $220
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Remove segment from path at $220
 
 .proc remove_path_segment_220
@@ -17371,7 +16721,7 @@ found:  dex
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA33B
         lda     L97AD
@@ -17395,7 +16745,7 @@ LA35C:  sty     $1FC0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA360
         ldx     $1FC0
@@ -17415,7 +16765,7 @@ LA374:  dex
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA379
         ldy     #$00
@@ -17437,17 +16787,14 @@ LA395:  lda     path_buf4,y
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LA39F:  jsr     L917F
         jmp     LA3A7
 
 .proc LA3A7_impl
 
-.proc close_params
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
+        DEFINE_CLOSE_PARAMS close_params
 
 start:  yax_call JT_MLI_RELAY, CLOSE, close_params
         lda     selected_window_index
@@ -17461,15 +16808,15 @@ start:  yax_call JT_MLI_RELAY, CLOSE, close_params
 .endproc
         LA3A7 := LA3A7_impl::start
 
-;;; ==================================================
+;;; ============================================================
 
 .proc check_escape_key_down
         yax_call JT_MGTK_RELAY, MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_key_down
         bne     nope
-        lda     event_params_key
-        cmp     #KEY_ESCAPE
+        lda     event_key
+        cmp     #CHAR_ESCAPE
         bne     nope
         lda     #$FF
         bne     done
@@ -17481,17 +16828,17 @@ LA3EF:  sub16   LA2ED, #1, L9E7A
         yax_call launch_dialog, index_delete_file_dialog, L9E79
         rts
 
-LA40A:  sub16   LA2ED, #$01, L9938
+LA40A:  sub16   LA2ED, #1, L9938
         yax_call launch_dialog, index_copy_file_dialog, L9937
         rts
 
 LA425:  .byte   0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LA426
         jsr     LA46D
-        lda     #$C3
+        lda     #ACCESS_DEFAULT
         sta     file_info_params3::access
         jsr     LA479
         lda     file_info_params2::file_type
@@ -17538,7 +16885,7 @@ loop:   lda     file_info_params2::access,x
 done:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc show_error_alert_impl
 
@@ -17550,9 +16897,9 @@ flag_clear:
         ldx     #0
 
 :       stx     flag
-        cmp     #PDERR_VOL_NOT_FOUND ; if err is "not found"
+        cmp     #ERR_VOL_NOT_FOUND ; if err is "not found"
         beq     not_found       ; prompt specifically for src/dst disk
-        cmp     #PDERR_PATH_NOT_FOUND
+        cmp     #ERR_PATH_NOT_FOUND
         beq     not_found
 
         jsr     JT_SHOW_ALERT0
@@ -17568,13 +16915,13 @@ not_found:
 :       lda     #$FC            ; "Please insert source disk"
 show:   jsr     JT_SHOW_ALERT0
         bne     LA4C2
-        jmp     do_online
+        jmp     do_on_line
 
 LA4C2:  jmp     LA39F
 
 flag:   .byte   0
 
-do_online:
+do_on_line:
         yax_call JT_MLI_RELAY, ON_LINE, on_line_params2
         rts
 
@@ -17585,7 +16932,7 @@ do_online:
         .assert * = $A4D0, error, "Segment length mismatch"
         PAD_TO $A500
 
-;;; ==================================================
+;;; ============================================================
 ;;; Dialog Launcher (or just proc handler???)
 
         index_about_dialog              := 0
@@ -17648,7 +16995,7 @@ dialog_param_addr:
 .endproc
 
 
-;;; ==================================================
+;;; ============================================================
 ;;; Message handler for OK/Cancel dialog
 
 .proc prompt_input_loop
@@ -17660,7 +17007,7 @@ dialog_param_addr:
         lda     #$14
         sta     LD8E9
 :       MGTK_RELAY_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_down
         bne     :+
         jmp     prompt_click_handler
@@ -17671,22 +17018,22 @@ dialog_param_addr:
 
 :       lda     LD8E8
         beq     prompt_input_loop
-        MGTK_RELAY_CALL MGTK::FindWindow, event_params_coords
-        lda     findwindow_params_which_area
+        MGTK_RELAY_CALL MGTK::FindWindow, event_coords
+        lda     findwindow_which_area
         bne     :+
         jmp     prompt_input_loop
 
-:       lda     $D20E
-        cmp     winfoF
+:       lda     findwindow_window_id
+        cmp     winfo_alert_dialog
         beq     :+
         jmp     prompt_input_loop
 
-:       lda     winfoF
+:       lda     winfo_alert_dialog
         jsr     set_port_from_window_id
-        lda     winfoF
+        lda     winfo_alert_dialog
         sta     event_params
-        MGTK_RELAY_CALL MGTK::ScreenToWindow, event_params
-        MGTK_RELAY_CALL MGTK::MoveTo, $D20D
+        MGTK_RELAY_CALL MGTK::ScreenToWindow, screentowindow_params
+        MGTK_RELAY_CALL MGTK::MoveTo, screentowindow_windowx
         MGTK_RELAY_CALL MGTK::InRect, rect1
         cmp     #MGTK::inrect_inside
         bne     out
@@ -17706,8 +17053,8 @@ done:   jsr     reset_state
         prompt_button_all := 4
 
 .proc prompt_click_handler
-        MGTK_RELAY_CALL MGTK::FindWindow, event_params_coords
-        lda     findwindow_params_which_area
+        MGTK_RELAY_CALL MGTK::FindWindow, event_coords
+        lda     findwindow_which_area
         bne     :+
         return  #$FF
 :       cmp     #MGTK::area_content
@@ -17716,16 +17063,16 @@ done:   jsr     reset_state
 :       return  #$FF
 
 content:
-        lda     findwindow_params_window_id
-        cmp     winfoF
+        lda     findwindow_window_id
+        cmp     winfo_alert_dialog
         beq     :+
         return  #$FF
-:       lda     winfoF
+:       lda     winfo_alert_dialog
         jsr     set_port_from_window_id
-        lda     winfoF
+        lda     winfo_alert_dialog
         sta     event_params
-        MGTK_RELAY_CALL MGTK::ScreenToWindow, event_params
-        MGTK_RELAY_CALL MGTK::MoveTo, $D20D
+        MGTK_RELAY_CALL MGTK::ScreenToWindow, screentowindow_params
+        MGTK_RELAY_CALL MGTK::MoveTo, screentowindow_windowx
         bit     LD8E7
         bvc     :+
         jmp     check_button_yes
@@ -17805,24 +17152,24 @@ LA6F7:  jsr     LB9B8
 ;;; Key handler for prompt dialog
 
 .proc prompt_key_handler
-        lda     event_params_modifiers
+        lda     event_modifiers
         cmp     #MGTK::event_modifier_solid_apple
         bne     LA71A
-        lda     event_params_key
+        lda     event_key
         and     #$7F
-        cmp     #KEY_LEFT
+        cmp     #CHAR_LEFT
         bne     LA710
         jmp     LA815
 
-LA710:  cmp     #KEY_RIGHT
+LA710:  cmp     #CHAR_RIGHT
         bne     LA717
         jmp     LA820
 
 LA717:  return  #$FF
 
-LA71A:  lda     event_params_key
+LA71A:  lda     event_key
         and     #$7F
-        cmp     #KEY_LEFT
+        cmp     #CHAR_LEFT
         bne     LA72E
         bit     LD8ED
         bpl     LA72B
@@ -17830,7 +17177,7 @@ LA71A:  lda     event_params_key
 
 LA72B:  jmp     LA82B
 
-LA72E:  cmp     #KEY_RIGHT
+LA72E:  cmp     #CHAR_RIGHT
         bne     LA73D
         bit     LD8ED
         bpl     LA73A
@@ -17838,23 +17185,23 @@ LA72E:  cmp     #KEY_RIGHT
 
 LA73A:  jmp     LA83E
 
-LA73D:  cmp     #KEY_RETURN
+LA73D:  cmp     #CHAR_RETURN
         bne     LA749
         bit     LD8E7
         bvs     LA717
         jmp     LA851
 
-LA749:  cmp     #KEY_ESCAPE
+LA749:  cmp     #CHAR_ESCAPE
         bne     LA755
         bit     LD8E7
         bmi     LA717
         jmp     LA86F
 
-LA755:  cmp     #KEY_DELETE
+LA755:  cmp     #CHAR_DELETE
         bne     LA75C
         jmp     LA88D
 
-LA75C:  cmp     #KEY_UP
+LA75C:  cmp     #CHAR_UP
         bne     LA76B
         bit     LD8ED
         bmi     LA768
@@ -17862,7 +17209,7 @@ LA75C:  cmp     #KEY_UP
 
 LA768:  jmp     L0D14
 
-LA76B:  cmp     #KEY_DOWN
+LA76B:  cmp     #CHAR_DOWN
         bne     LA77A
         bit     LD8ED
         bmi     LA777
@@ -17884,7 +17231,7 @@ LA77A:  bit     LD8E7
         beq     LA806
         cmp     #'a'
         beq     LA806
-        cmp     #KEY_RETURN
+        cmp     #CHAR_RETURN
         beq     LA7E8
 
 LA79B:  bit     LD8F5
@@ -17968,14 +17315,14 @@ LA83E:  lda     LD8E8
 LA84B:  jsr     LBC03
 LA84E:  return  #$FF
 
-LA851:  lda     winfoF
+LA851:  lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     set_penmode_xor2
         MGTK_RELAY_CALL MGTK::PaintRect, desktop_aux::ok_button_rect
         MGTK_RELAY_CALL MGTK::PaintRect, desktop_aux::ok_button_rect
         return  #0
 
-LA86F:  lda     winfoF
+LA86F:  lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     set_penmode_xor2
         MGTK_RELAY_CALL MGTK::PaintRect, desktop_aux::cancel_button_rect
@@ -17994,12 +17341,12 @@ jump_relay:
         jmp     dummy0000
 
 
-;;; ==================================================
+;;; ============================================================
 ;;; "About" dialog
 
 .proc show_about_dialog
-        MGTK_RELAY_CALL MGTK::OpenWindow, winfo18
-        lda     winfo18::window_id
+        MGTK_RELAY_CALL MGTK::OpenWindow, winfo_about_dialog
+        lda     winfo_about_dialog::window_id
         jsr     set_port_from_window_id
         jsr     set_penmode_xor2
         MGTK_RELAY_CALL MGTK::FrameRect, desktop_aux::about_dialog_outer_rect
@@ -18017,26 +17364,26 @@ jump_relay:
         copy16  #dialog_label_default_x, dialog_label_pos
 
 :       MGTK_RELAY_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_down
         beq     close
         cmp     #MGTK::event_kind_key_down
         bne     :-
-        lda     event_params_key
+        lda     event_key
         and     #$7F
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         beq     close
-        cmp     #KEY_RETURN
+        cmp     #CHAR_RETURN
         bne     :-
         jmp     close
 
-close:  MGTK_RELAY_CALL MGTK::CloseWindow, winfo18
+close:  MGTK_RELAY_CALL MGTK::CloseWindow, winfo_about_dialog
         jsr     reset_state
         jsr     set_cursor_pointer_with_flag
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc show_copy_file_dialog
         ptr := $6
@@ -18079,7 +17426,7 @@ do1:    ldy     #1
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         MGTK_RELAY_CALL MGTK::MoveTo, desktop_aux::LB0B6
         addr_call draw_text1, str_file_count
@@ -18094,7 +17441,7 @@ do2:    ldy     #1
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     LBE8D
         jsr     LBE9A
@@ -18125,12 +17472,12 @@ do2:    ldy     #1
         rts
 
 do5:    jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         rts
 
 do3:    jsr     bell
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         axy_call draw_dialog_label, 6, desktop_aux::str_exists_prompt
         jsr     draw_yes_no_all_cancel_buttons
@@ -18144,7 +17491,7 @@ LAA7F:  jsr     prompt_input_loop
         rts
 
 do4:    jsr     bell
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         axy_call draw_dialog_label, 6, desktop_aux::str_large_prompt
         jsr     draw_ok_cancel_buttons
@@ -18158,7 +17505,7 @@ LAAB1:  jsr     prompt_input_loop
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc bell
         sta     ALTZPOFF
@@ -18170,7 +17517,7 @@ LAAB1:  jsr     prompt_input_loop
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "DownLoad" dialog
 
 .proc show_download_dialog
@@ -18210,7 +17557,7 @@ do1:    ldy     #1
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         MGTK_RELAY_CALL MGTK::MoveTo, desktop_aux::LB0B6
         addr_call draw_text1, str_file_count
@@ -18225,7 +17572,7 @@ do2:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     LBE8D
         jsr     copy_dialog_param_addr_to_ptr
@@ -18244,12 +17591,12 @@ do2:    ldy     #$01
         rts
 
 do3:    jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         rts
 
 do4:    jsr     bell
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         axy_call draw_dialog_label, 6, desktop_aux::str_ramcard_full
         jsr     draw_ok_button
@@ -18263,7 +17610,7 @@ do4:    jsr     bell
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Get Size" dialog
 
 .proc show_get_size_dialog
@@ -18307,7 +17654,7 @@ do1:    ldy     #$01
         lda     (ptr),y
         sta     file_count+1
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         lda     #165
         sta     dialog_label_pos
@@ -18333,11 +17680,11 @@ do1:    ldy     #$01
         rts
 
 do3:    jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         rts
 
-do2:    lda     winfoF
+do2:    lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     draw_ok_button
 :       jsr     prompt_input_loop
@@ -18348,7 +17695,7 @@ do2:    lda     winfoF
         return  #0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Delete File" dialog
 
 .proc show_delete_file_dialog
@@ -18394,7 +17741,7 @@ do1:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         lda     LAD1F
         bne     LAD54
@@ -18414,7 +17761,7 @@ do3:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     LBE8D
         jsr     copy_dialog_param_addr_to_ptr
@@ -18432,7 +17779,7 @@ do3:    ldy     #$01
         addr_call draw_text1, str_file_count
         rts
 
-do2:    lda     winfoF
+do2:    lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     draw_ok_cancel_buttons
 LADC4:  jsr     prompt_input_loop
@@ -18447,11 +17794,11 @@ LADC4:  jsr     prompt_input_loop
 LADF4:  rts
 
 do5:    jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         rts
 
-do4:    lda     winfoF
+do4:    lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         axy_call draw_dialog_label, 6, desktop_aux::str_delete_locked_file
         jsr     draw_yes_no_all_cancel_buttons
@@ -18465,7 +17812,7 @@ LAE17:  jsr     prompt_input_loop
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "New Folder" dialog
 
 .proc show_new_folder_dialog
@@ -18485,7 +17832,7 @@ LAE49:  lda     #$80
         jsr     LBD69
         lda     #$00
         jsr     LB509
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         addr_call draw_dialog_title, desktop_aux::str_new_folder_title
         jsr     set_penmode_xor2
@@ -18511,7 +17858,7 @@ LAE90:  lda     ($08),y
         sta     path_buf0,y
         dey
         bpl     LAE90
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         yax_call draw_dialog_label, 2, desktop_aux::str_in_colon
         lda     #55
@@ -18558,12 +17905,12 @@ LAEFF:  inx
         return  #0
 
 LAF16:  jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         return  #1
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Get Info" dialog
 
 .proc show_get_info_dialog
@@ -18583,7 +17930,7 @@ LAF34:  lda     #$00
         ror     a
         eor     #$80
         jsr     LB509
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         addr_call draw_dialog_title, desktop_aux::str_info_title
         jsr     copy_dialog_param_addr_to_ptr
@@ -18611,7 +17958,7 @@ LAF9B:  yax_call draw_dialog_label, 4, desktop_aux::str_info_create
         yax_call draw_dialog_label, 6, desktop_aux::str_info_type
         jmp     reset_state
 
-LAFB9:  lda     winfoF
+LAFB9:  lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     copy_dialog_param_addr_to_ptr
         ldy     #0
@@ -18648,7 +17995,7 @@ LAFF8:  ldy     row
 
         pha
         jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer_with_flag
         pla
         rts
@@ -18657,7 +18004,7 @@ LB01D:  .byte   0
 row:    .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw ":" after dialog label
 
 .proc draw_colon
@@ -18667,7 +18014,7 @@ row:    .byte   0
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Lock" dialog
 
 .proc show_lock_dialog
@@ -18703,7 +18050,7 @@ do1:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         MGTK_RELAY_CALL MGTK::MoveTo, desktop_aux::LB231
         addr_call draw_text1, str_file_count
@@ -18719,7 +18066,7 @@ do3:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     LBE8D
         jsr     copy_dialog_param_addr_to_ptr
@@ -18737,7 +18084,7 @@ do3:    ldy     #$01
         addr_call draw_text1, str_file_count
         rts
 
-do2:    lda     winfoF
+do2:    lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     draw_ok_cancel_buttons
 LB0FA:  jsr     prompt_input_loop
@@ -18753,12 +18100,12 @@ LB0FA:  jsr     prompt_input_loop
 LB139:  rts
 
 do4:    jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Unlock" dialog
 
 .proc show_unlock_dialog
@@ -18794,7 +18141,7 @@ do1:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         MGTK_RELAY_CALL MGTK::MoveTo, desktop_aux::LB22D
         addr_call draw_text1, str_file_count
@@ -18810,7 +18157,7 @@ do3:    ldy     #$01
         sta     file_count+1
         jsr     adjust_str_files_suffix
         jsr     compose_file_count_string
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     LBE8D
         jsr     copy_dialog_param_addr_to_ptr
@@ -18828,7 +18175,7 @@ do3:    ldy     #$01
         addr_call draw_text1, str_file_count
         rts
 
-do2:    lda     winfoF
+do2:    lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     draw_ok_cancel_buttons
 LB218:  jsr     prompt_input_loop
@@ -18844,12 +18191,12 @@ LB218:  jsr     prompt_input_loop
 LB257:  rts
 
 do4:    jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Rename" dialog
 
 .proc show_rename_dialog
@@ -18871,7 +18218,7 @@ LB27D:  jsr     LBD75
         jsr     LBD69
         lda     #$00
         jsr     LB509
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         addr_call draw_dialog_title, desktop_aux::str_rename_title
         jsr     set_penmode_xor2
@@ -18900,11 +18247,8 @@ LB2CA:  lda     ($08),y
         jsr     draw_filename_prompt
         rts
 
-LB2ED:  lda     #$00
-        sta     LD8E7
-        lda     #$80
-        sta     LD8E8
-        lda     winfoF
+LB2ED:  copy16  #$8000, LD8E7
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
 LB2FD:  jsr     prompt_input_loop
         bmi     LB2FD
@@ -18917,12 +18261,12 @@ LB2FD:  jsr     prompt_input_loop
         return  #0
 
 LB313:  jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         return  #1
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; "Warning!" dialog
 ;;; $6 ptr to message num
 
@@ -18932,7 +18276,7 @@ LB313:  jsr     reset_state
         ;; Create window
         MGTK_RELAY_CALL MGTK::HideCursor
         jsr     open_alert_window
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         addr_call draw_dialog_title, desktop_aux::str_warning
         MGTK_RELAY_CALL MGTK::ShowCursor
@@ -18987,7 +18331,7 @@ draw_string:
 
         pha
         jsr     reset_state
-        MGTK_RELAY_CALL MGTK::CloseWindow, winfoF
+        MGTK_RELAY_CALL MGTK::CloseWindow, winfo_alert_dialog
         jsr     set_cursor_pointer
         pla
         rts
@@ -19013,7 +18357,7 @@ warning_message_table:
         warning_msg_too_many_windows            := 5
         warning_msg_save_selector_list          := 6
 
-;;; ==================================================
+;;; ============================================================
 
 .proc copy_dialog_param_addr_to_ptr
         copy16  dialog_param_addr, $06
@@ -19064,7 +18408,7 @@ set_penmode_xor2:
         rts
 
         ldx     #$03
-LB447:  lda     event_params_coords,x
+LB447:  lda     event_coords,x
         sta     LB502,x
         dex
         bpl     LB447
@@ -19088,7 +18432,7 @@ LB476:  MGTK_RELAY_CALL MGTK::PeekEvent, event_params
         bmi     LB4B7
         lda     #$FF
         sta     LB508
-        lda     event_params_kind
+        lda     event_kind
         sta     LB507
         cmp     #MGTK::event_kind_no_event
         beq     LB45F
@@ -19106,11 +18450,11 @@ LB4A7:  cmp     #$01
 
 LB4B7:  return  #$FF
 
-LB4BA:  lda     event_params_xcoord
+LB4BA:  lda     event_xcoord
         sec
         sbc     LB502
         sta     LB506
-        lda     event_params_xcoord+1
+        lda     event_xcoord+1
         sbc     LB503
         bpl     LB4D6
         lda     LB506
@@ -19121,11 +18465,11 @@ LB4D3:  return  #$FF
 LB4D6:  lda     LB506
         cmp     #$05
         bcs     LB4D3
-LB4DD:  lda     event_params_ycoord
+LB4DD:  lda     event_ycoord
         sec
         sbc     LB504
         sta     LB506
-        lda     event_params_ycoord+1
+        lda     event_ycoord+1
         sbc     LB505
         bpl     LB4F6
         lda     LB506
@@ -19161,8 +18505,8 @@ LB526:  bit     LD8E7
 LB537:  jmp     reset_state
 
 .proc open_dialog_window
-        MGTK_RELAY_CALL MGTK::OpenWindow, winfoF
-        lda     winfoF
+        MGTK_RELAY_CALL MGTK::OpenWindow, winfo_alert_dialog
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     set_penmode_xor2
         MGTK_RELAY_CALL MGTK::FrameRect, desktop_aux::confirm_dialog_outer_rect
@@ -19171,8 +18515,8 @@ LB537:  jmp     reset_state
 .endproc
 
 .proc open_alert_window
-        MGTK_RELAY_CALL MGTK::OpenWindow, winfoF
-        lda     winfoF
+        MGTK_RELAY_CALL MGTK::OpenWindow, winfo_alert_dialog
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     set_fill_white
         MGTK_RELAY_CALL MGTK::PaintBits, alert_bitmap2_params
@@ -19182,7 +18526,7 @@ LB537:  jmp     reset_state
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; Draw dialog label.
 ;;; A,X has pointer to DrawText params block
@@ -19235,7 +18579,7 @@ skip:   dey                     ; ypos = (Y-1) * 8 + pointD::ycoord
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 draw_ok_label:
         MGTK_RELAY_CALL MGTK::MoveTo, desktop_aux::ok_label_pos
@@ -19313,7 +18657,7 @@ erase_ok_button:
         MGTK_RELAY_CALL MGTK::PaintRect, desktop_aux::ok_button_rect
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc draw_text1
         params := $6
@@ -19324,14 +18668,12 @@ erase_ok_button:
         jsr     load_aux_from_ptr
         beq     done
         sta     textlen
-        inc     textptr
-        bne     :+
-        inc     textptr+1
-:       MGTK_RELAY_CALL MGTK::DrawText, params
+        inc16   textptr
+        MGTK_RELAY_CALL MGTK::DrawText, params
 done:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc draw_dialog_title
         str       := $6
@@ -19366,7 +18708,7 @@ done:   rts
 hi:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Unreferenced ???
 LB76C:  stax    $06
@@ -19374,40 +18716,50 @@ LB76C:  stax    $06
         addr_call_indirect draw_text1, $06
         rts
 
-LB781:  stx     $0B
-        sta     $0A
-        ldy     #$00
-        lda     ($0A),y
+;;; ============================================================
+;;; Adjust case in a filename (input buf A,X, output buf $A)
+;;; Called from ovl2
+
+.proc adjust_case
+        ptr := $A
+
+        stx     ptr+1
+        sta     ptr
+        ldy     #0
+        lda     (ptr),y
         tay
-        bne     LB78D
+        bne     loop
         rts
+loop:   dey
+        beq     done
+        bpl     :+
+done:   rts
 
-LB78D:  dey
-        beq     LB792
-        bpl     LB793
-LB792:  rts
-
-LB793:  lda     ($0A),y
+:       lda     (ptr),y
         and     #$7F
-        cmp     #$2F
-        beq     LB79F
-        cmp     #$2E
-        bne     LB7A3
-LB79F:  dey
-        jmp     LB78D
+        cmp     #'/'
+        beq     :+
+        cmp     #'.'
+        bne     check_alpha
+:       dey
+        jmp     loop
 
-LB7A3:  iny
-        lda     ($0A),y
+check_alpha:
+        iny
+        lda     (ptr),y
         and     #$7F
-        cmp     #$41
-        bcc     LB7B5
-        cmp     #$5B
-        bcs     LB7B5
+        cmp     #'A'
+        bcc     :+
+        cmp     #'Z'+1
+        bcs     :+
         clc
-        adc     #$20
-        sta     ($0A),y
-LB7B5:  dey
-        jmp     LB78D
+        adc     #('a' - 'A')    ; Lowercase
+        sta     (ptr),y
+:       dey
+        jmp     loop
+.endproc
+
+;;; ============================================================
 
 .proc set_port_from_window_id
         sta     getwinport_params2::window_id
@@ -19416,7 +18768,7 @@ LB7B5:  dey
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Event loop during button press - handle inverting
 ;;; the text as mouse is dragged in/out, report final
 ;;; click (A as passed) / cancel (A is negative)
@@ -19510,13 +18862,13 @@ event_loop:
         lda     #0
         sta     down_flag
 loop:   MGTK_RELAY_CALL MGTK::GetEvent, event_params
-        lda     event_params_kind
+        lda     event_kind
         cmp     #MGTK::event_kind_button_up
         beq     exit
-        lda     winfoF
+        lda     winfo_alert_dialog
         sta     event_params
-        MGTK_RELAY_CALL MGTK::ScreenToWindow, event_params
-        MGTK_RELAY_CALL MGTK::MoveTo, $D20D
+        MGTK_RELAY_CALL MGTK::ScreenToWindow, screentowindow_params
+        MGTK_RELAY_CALL MGTK::MoveTo, screentowindow_windowx
         jsr     test_proc
         cmp     #MGTK::inrect_inside
         beq     inside
@@ -19553,7 +18905,7 @@ click_result:
         rts                     ; ???
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LB8F5
         point := $6
@@ -19584,17 +18936,17 @@ LB93B:  copy16  #LD8EF, textptr
         sta     textlen
         MGTK_RELAY_CALL MGTK::DrawText, drawtext_params
         MGTK_RELAY_CALL MGTK::SetTextBG, desktop_aux::LAE6D
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc draw_filename_prompt
         lda     path_buf1
         beq     done
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         jsr     set_fill_white
         MGTK_RELAY_CALL MGTK::PaintRect, rect1
@@ -19605,16 +18957,16 @@ LB93B:  copy16  #LD8EF, textptr
         addr_call draw_text1, path_buf1
         addr_call draw_text1, path_buf2
         addr_call draw_text1, str_2_spaces
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
 done:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc LB9B8
-        MGTK_RELAY_CALL MGTK::ScreenToWindow, event_params
-        MGTK_RELAY_CALL MGTK::MoveTo, $D20D
+        MGTK_RELAY_CALL MGTK::ScreenToWindow, screentowindow_params
+        MGTK_RELAY_CALL MGTK::MoveTo, screentowindow_windowx
         MGTK_RELAY_CALL MGTK::InRect, rect1
         cmp     #MGTK::inrect_inside
         beq     :+
@@ -19622,7 +18974,7 @@ done:   rts
 
 :       jsr     measure_path_buf1
         stax    $06
-        cmp16   $D20D, $06
+        cmp16   screentowindow_windowx, $06
         bcs     LB9EE
         jmp     LBA83
 .endproc
@@ -19708,32 +19060,32 @@ LBA7C:  dey
 
 .proc LBABF
         inc     $08
-        ldy     #$00
+        ldy     #0
         ldx     $08
 LBAC5:  cpx     path_buf1
         beq     LBAD5
         inx
         iny
         lda     path_buf1,x
-        sta     $D3C2,y
+        sta     LD3C0+2,y
         jmp     LBAC5
 
 LBAD5:  iny
-        sty     $D3C1
-        ldx     #$01
-        ldy     $D3C1
+        sty     LD3C0+1
+        ldx     #1
+        ldy     LD3C0+1
 LBADE:  cpx     path_buf2
         beq     LBAEE
         inx
         iny
         lda     path_buf2,x
-        sta     $D3C1,y
+        sta     LD3C0+1,y
         jmp     LBADE
 
-LBAEE:  sty     $D3C1
+LBAEE:  sty     LD3C0+1
         lda     LD8EF
-        sta     $D3C2
-LBAF7:  lda     $D3C1,y
+        sta     LD3C0+2
+LBAF7:  lda     LD3C0+1,y
         sta     path_buf2,y
         dey
         bpl     LBAF7
@@ -19773,7 +19125,7 @@ LBB0B:  sta     LBB62
         MGTK_RELAY_CALL MGTK::SetPortBits, setportbits_params3
         addr_call draw_text1, str_1_char
         addr_call draw_text1, path_buf2
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         rts
 .endproc
@@ -19796,7 +19148,7 @@ LBB63:  lda     path_buf1
         MGTK_RELAY_CALL MGTK::SetPortBits, setportbits_params3
         addr_call draw_text1, path_buf2
         addr_call draw_text1, str_2_spaces
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         rts
 .endproc
@@ -19814,13 +19166,13 @@ LBBA4:  lda     path_buf1
         cpx     #1
         beq     LBBBC
 LBBB1:  lda     path_buf2,x
-        sta     $D485,x
+        sta     path_buf2+1,x
         dex
         cpx     #1
         bne     LBBB1
 LBBBC:  ldx     path_buf1
         lda     path_buf1,x
-        sta     $D486
+        sta     path_buf2+2
         dec     path_buf1
         inc     path_buf2
         jsr     measure_path_buf1
@@ -19830,7 +19182,7 @@ LBBBC:  ldx     path_buf1
         MGTK_RELAY_CALL MGTK::SetPortBits, setportbits_params3
         addr_call draw_text1, path_buf2
         addr_call draw_text1, str_2_spaces
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         rts
 .endproc
@@ -19842,14 +19194,14 @@ LBC03:  lda     path_buf2
 
 LBC0B:  ldx     path_buf1
         inx
-        lda     $D486
+        lda     path_buf2+2
         sta     path_buf1,x
         inc     path_buf1
         ldx     path_buf2
         cpx     #$03
         bcc     LBC2D
         ldx     #$02
-LBC21:  lda     $D485,x
+LBC21:  lda     path_buf2+1,x
         sta     path_buf2,x
         inx
         cpx     path_buf2
@@ -19860,7 +19212,7 @@ LBC2D:  dec     path_buf2
         addr_call draw_text1, path_buf1
         addr_call draw_text1, path_buf2
         addr_call draw_text1, str_2_spaces
-        lda     winfoF
+        lda     winfo_alert_dialog
         jsr     set_port_from_window_id
         rts
 
@@ -19872,31 +19224,31 @@ LBC64:  ldx     path_buf2
         cpx     #$01
         beq     LBC79
 LBC6B:  lda     path_buf2,x
-        sta     $D3C0,x
+        sta     LD3C0,x
         dex
         cpx     #$01
         bne     LBC6B
         ldx     path_buf2
 LBC79:  dex
-        stx     $D3C1
+        stx     LD3C0+1
         ldx     path_buf1
 LBC80:  lda     path_buf1,x
-        sta     $D485,x
+        sta     path_buf2+1,x
         dex
         bne     LBC80
         lda     LD8EF
-        sta     $D485
+        sta     path_buf2+1
         inc     path_buf1
         lda     path_buf1
         sta     path_buf2
         lda     path_buf1
         clc
-        adc     $D3C1
+        adc     LD3C0+1
         tay
         pha
-        ldx     $D3C1
+        ldx     LD3C0+1
         beq     LBCB3
-LBCA6:  lda     $D3C1,x
+LBCA6:  lda     LD3C0+1,x
         sta     path_buf2,y
         dex
         dey
@@ -19968,7 +19320,7 @@ LBD33:  rts
         jsr     draw_filename_prompt
         rts
 
-;;; ==================================================
+;;; ============================================================
 ;;; Compute width of path_buf1, offset point6, return x coord in (A,X)
 
 .proc measure_path_buf1
@@ -19996,12 +19348,12 @@ LBD33:  rts
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LBD69:  lda     #$01
         sta     path_buf2
         lda     LD8EF
-        sta     $D485
+        sta     path_buf2+1
         rts
 
 LBD75:  lda     #$00
@@ -20054,7 +19406,7 @@ saved_proc_buf:
         .res    20, 0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Make str_files singlular or plural based on file_count
 
 .proc adjust_str_files_suffix
@@ -20074,7 +19426,7 @@ saved_proc_buf:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc compose_file_count_string
         lda     file_count
@@ -20145,7 +19497,7 @@ nonzero_flag:                ; high bit set once a non-zero digit seen
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 LBE63:  ldy     #$00
         lda     ($06),y
@@ -20154,7 +19506,7 @@ LBE68:  lda     ($06),y
         sta     path_buf0,y
         dey
         bpl     LBE68
-        addr_call LB781, path_buf0
+        addr_call adjust_case, path_buf0
         rts
 
 LBE78:  ldy     #$00
@@ -20164,7 +19516,7 @@ LBE7D:  lda     ($06),y
         sta     path_buf1,y
         dey
         bpl     LBE7D
-        addr_call LB781, path_buf1
+        addr_call adjust_case, path_buf1
         rts
 
 LBE8D:  jsr     set_fill_white
@@ -20191,9 +19543,9 @@ reset_state:
         desktop_main_pop_zp_addrs := desktop_main::pop_zp_addrs
         desktop_main_push_zp_addrs := desktop_main::push_zp_addrs
 
-;;; ==================================================
+;;; ============================================================
 ;;; Segment loaded into MAIN $800-$FFF
-;;; ==================================================
+;;; ============================================================
 
 ;;; Appears to be init sequence - machine identification, etc
 
@@ -20201,7 +19553,7 @@ reset_state:
 
         .org $800
 
-;;; ==================================================
+;;; ============================================================
 
 start:
 
@@ -20252,7 +19604,7 @@ is_iic: lda     #$FA            ; IIc
 iigs_flag:                      ; High bit set if IIgs detected.
         .byte   0
 
-;;; ==================================================
+;;; ============================================================
 
 .proc init_video
         sta     CLR80VID
@@ -20275,7 +19627,7 @@ iigs_flag:                      ; High bit set if IIgs detected.
 end:
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc detach_ramdisk
         ;; Make a copy of the original device list
@@ -20300,7 +19652,7 @@ found_ram:
         ;; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Initialize MGTK
 .proc init_mgtk
@@ -20312,7 +19664,7 @@ found_ram:
         ;; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Populate icon_entries table
 .proc populate_icon_entries_table
@@ -20349,7 +19701,7 @@ loop:   cpx     #max_icon_count
         jmp     loop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Zero the window icon tables
 .proc clear_window_icon_tables
@@ -20367,7 +19719,7 @@ loop:   sta     $1F00,x         ; window 8, icon use map
         jmp     create_trash_icon
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 trash_name:  PASCAL_STRING " Trash "
 
@@ -20406,7 +19758,7 @@ trash_name:  PASCAL_STRING " Trash "
         ;; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; create volume icons???
 .proc init_volumes
@@ -20490,7 +19842,7 @@ devcnt: .byte   0
 L0A02:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc load_selector_list
         ptr1 := $6
@@ -20604,28 +19956,13 @@ calc_data_str:
 
 ;;; --------------------------------------------------
 
-.proc open_params
-param_count:    .byte   3
-pathname:       .addr   str_selector_list
-io_buffer:      .addr   selector_list_io_buf
-ref_num:        .byte   0
-.endproc
+        DEFINE_OPEN_PARAMS open_params, str_selector_list, selector_list_io_buf
 
 str_selector_list:
         PASCAL_STRING "Selector.List"
 
-.proc read_params
-param_count:    .byte   4
-ref_num:        .byte   0
-read_buffer:    .addr   selector_list_data_buf
-request_count:  .word   selector_list_data_len
-trans_count:    .word   0
-.endproc
-
-.proc close_params
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
+        DEFINE_READ_PARAMS read_params, selector_list_data_buf, selector_list_data_len
+        DEFINE_CLOSE_PARAMS close_params
 
 read_selector_list:
         MLI_RELAY_CALL OPEN, open_params
@@ -20636,7 +19973,7 @@ read_selector_list:
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc calc_header_item_widths
         ;; Enough space for "123456"
@@ -20645,30 +19982,15 @@ read_selector_list:
 
         ;; Width of "123456 Items"
         addr_call desktop_main::measure_text1, str_items
-        clc
-        adc     dx
-        sta     width_items_label
-        txa
-        adc     dx+1
-        sta     width_items_label+1
+        addax   dx, width_items_label
 
         ;; Width of "123456K in disk"
         addr_call desktop_main::measure_text1, str_k_in_disk
-        clc
-        adc     dx
-        sta     width_k_in_disk_label
-        txa
-        adc     dx+1
-        sta     width_k_in_disk_label+1
+        addax   dx, width_k_in_disk_label
 
         ;; Width of "123456K available"
         addr_call desktop_main::measure_text1, str_k_available
-        clc
-        adc     dx
-        sta     width_k_available_label
-        txa
-        adc     dx+1
-        sta     width_k_available_label+1
+        addax   dx, width_k_available_label
 
         add16   width_k_in_disk_label, width_k_available_label, width_right_labels
         add16   width_items_label, #5, width_items_label_padded
@@ -20679,7 +20001,7 @@ read_selector_list:
 dx:     .word   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc enumerate_desk_accessories
         MGTK_RELAY_CALL MGTK::CheckEvents ; ???
@@ -20689,15 +20011,15 @@ dx:     .word   0
         beq     :+
         jmp     L0D0A
 
-:       lda     get_file_info_params_type
+:       lda     get_file_info_type
         cmp     #FT_DIRECTORY
         beq     L0BC3
         jmp     L0D0A
 
 L0BC3:  MLI_RELAY_CALL OPEN, open_params
-        lda     open_params_ref_num
-        sta     read_params_ref_num
-        sta     close_params_ref_num
+        lda     open_ref_num
+        sta     read_ref_num
+        sta     close_ref_num
         MLI_RELAY_CALL READ, read_params
         lda     #$00
         sta     L0D04
@@ -20800,45 +20122,19 @@ L0CBA:  add16_8 $06, L0D06, $06
 L0CCB:  MLI_RELAY_CALL CLOSE, close_params
         jmp     L0D0A
 
-.proc open_params
-param_count:    .byte   3
-pathname:       .addr   str_desk_acc
-io_buffer:      .addr   $1000
-ref_num:        .byte   0
-.endproc
-        open_params_ref_num := open_params::ref_num
+        DEFINE_OPEN_PARAMS open_params, str_desk_acc, $1000
+        open_ref_num := open_params::ref_num
 
-.proc read_params
-param_count:    .byte   4
-ref_num:        .byte   0
-data_buffer:    .addr   $1400
-request_count:  .word   $200
-trans_count:    .word   0
-.endproc
-        read_params_ref_num := read_params::ref_num
+        DEFINE_READ_PARAMS read_params, $1400, $200
+        read_ref_num := read_params::ref_num
 
-.proc get_file_info_params
-param_count:    .byte   $A
-pathname:       .addr   str_desk_acc
-access: .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
-        get_file_info_params_type := get_file_info_params::file_type
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params, str_desk_acc
+        get_file_info_type := get_file_info_params::file_type
 
         .byte   0
 
-.proc close_params
-param_count:    .byte   1
-ref_num:        .byte   0
-.endproc
-        close_params_ref_num := close_params::ref_num
+        DEFINE_CLOSE_PARAMS close_params
+        close_ref_num := close_params::ref_num
 
 str_desk_acc:
         PASCAL_STRING "Desk.acc"
@@ -20852,7 +20148,7 @@ L0D08:  .byte   0
 L0D09:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L0D0A
         ldy     #0
@@ -21006,7 +20302,7 @@ L0E33:  .byte   0
 L0E34:  .byte   0
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
         ;; Remove device num in X from devices list
 .proc remove_device
@@ -21022,13 +20318,13 @@ L0E36:  inx
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc populate_startup_menu
         lda     DEVCNT
         clc
         adc     #3
-        sta     $E270
+        sta     LE270
 
         lda     #0
         sta     slot
@@ -21094,27 +20390,12 @@ slot_string_table:
 
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
-.proc get_file_info_params2
-param_count:    .byte   $A
-pathname:       .addr   desktop_main::sys_start_path
-access:         .byte   0
-file_type:      .byte   0
-aux_type:       .word   0
-storage_type:   .byte   0
-blocks_used:    .word   0
-mod_date:       .word   0
-mod_time:       .word   0
-create_date:    .word   0
-create_time:    .word   0
-.endproc
+        DEFINE_GET_FILE_INFO_PARAMS get_file_info_params2, desktop_main::sys_start_path
         .byte   0
 
-.proc get_prefix_params
-param_count:    .byte   1
-data_buffer:    .addr   desktop_main::sys_start_path
-.endproc
+        DEFINE_GET_PREFIX_PARAMS get_prefix_params, desktop_main::sys_start_path
 
 str_system_start:  PASCAL_STRING "System/Start"
 
@@ -21161,7 +20442,7 @@ config_toolkit:
         MGTK_RELAY_CALL MGTK::SetMenu, desktop_aux::desktop_menu
         MGTK_RELAY_CALL MGTK::SetCursor, pointer_cursor
         lda     #0
-        sta     $EC25
+        sta     active_window_id
         jsr     desktop_main::L66A2
         jsr     desktop_main::disable_eject_menu_item
         jsr     desktop_main::disable_file_menu_items

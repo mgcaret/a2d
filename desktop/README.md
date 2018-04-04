@@ -3,33 +3,41 @@
 
 ## DESKTOP.SYSTEM
 
-A short (8k) loader program. This is likely responsible for copying
+`sys.s`
+
+A short (8k) loader program. This is responsible for copying
 the rest to a RAM card (if available), then invoking the main app.
+
+NOTE: The second half may be used for "Down load", i.e. copy
+Selector entries to RAMCard as well.
 
 ## DESKTOP2.$F1
 
-This is large - 111k. It includes a loader, the DeskTop app (with both
-main memory and aux memory segments, filling everything from $4000 to
-$FFFF (except for I/O space and ProDOS), and still having more code
-segments swapped in dynamically.
+This is large - 111k. It includes a loader and the DeskTop app with
+both main memory and aux memory segments, filling everything from
+$4000 to $FFFF (except for I/O space and ProDOS), and still having
+more code segments swapped in dynamically.
 
 The file is broken down into multiple segments:
 
-* segment 0: load  - A$2000-$257F, L$0580, mark $000000 (Loader)
-* segment 1: aux   - A$4000-$BFFF, L$8000, mark $000580 (MGTK, DeskTop)
-* segment 2: auxlc - A$D000-$ECFF, L$1D00, mark $008580 (DeskTop)
-* segment 3: auxlc - A$FB00-$FFFF, L$0500, mark $00A280 (DeskTop)
-* segment 4: main  - A$4000-$BEFF, L$7F00, mark $00A780 (DeskTop)
-* segment 5: main  - A$0800-$0FFF, L$0800, mark $012680 (Initializer)
-* segment 6: main  - A$0290-$03EF, L$0160, mark $012E80 (Invoker)
+* segment 0: load  - A$2000-$257F, L$0580, B$000000 (`loader.s`; Loader)
+* segment 1: aux   - A$4000-$BFFF, L$8000, B$000580 (`mgtk.s`, `desktop.s`; MGTK, DeskTop)
+* segment 2: auxlc - A$D000-$ECFF, L$1D00, B$008580 (`desktop.s`; DeskTop)
+* segment 3: auxlc - A$FB00-$FFFF, L$0500, B$00A280 (`desktop.s`; DeskTop)
+* segment 4: main  - A$4000-$BEFF, L$7F00, B$00A780 (`desktop.s`; DeskTop)
+* segment 5: main  - A$0800-$0FFF, L$0800, B$012680 (`desktop.s`; Initializer)
+* segment 6: main  - A$0290-$03EF, L$0160, B$012E80 (`invoker.s`; Invoker)
 * overlays dynamically loaded for these actions:
-  * disk copy     - A$0800, L$0200, mark $012FE0
-  * format/erase  - A$0800, L$1400, mark $0160E0
-  * selector      - A$9000, L$1000, mark $0174E0
-  * common        - A$5000, L$2000, mark $0184E0 (used by selector, copy, delete)
-  * file copy     - A$7000, L$0800, mark $01A4E0
-  * file delete   - A$7000, L$0800, mark $01ACE0
-  * selector      - A$7000, L$0800, mark $01B4E0
+  * disk copy     - A$0800-$09FF, L$0200, B$012FE0 (`ovl1.s`)
+    * which loads - A$1800-$19FF, L$0200, B$0131E0 (`ovl1a.s`)
+    * which loads - A$D000-$F1FF, L$2200, B$0133E0 (`ovl1b.s`; overwrites the aux LC)
+    * and...      - A$0800-$12FF, L$0B00, B$0155E0 (`ovl1c.s`)
+  * format/erase  - A$0800-$1BFF, L$1400, B$0160E0 (`ovl2.s`)
+  * selector      - A$9000-$9FFF, L$1000, B$0174E0 (`ovl3.s`)
+  * common        - A$5000-$6FFF, L$2000, B$0184E0 (`ovl4.s`; used by selector, copy, delete)
+  * file copy     - A$7000-$77FF, L$0800, B$01A4E0 (`ovl5.s`)
+  * file delete   - A$7000-$77FF, L$0800, B$01ACE0 (`ovl6.s`)
+  * selector      - A$7000-$77FF, L$0800, B$01B4E0 (`ovl7.s`)
 * (EOF is $01BCE0)
 
 The DeskTop segments loaded into the Aux bank switched ("language
@@ -71,20 +79,23 @@ pathname passed at $2006 (see ProDOS TLM).
 
 ### Initializer
 
-`desktop.s`
+(in `desktop.s`)
 
 Loaded at $800-$FFF, this does one-time initialization of the
 DeskTop. It is later overwritten when any desk accessories are
 run.
 
-### Mouse Graphics Tool Kit (MGTK)
+### MouseGraphics ToolKit (MGTK)
 
-`a2d.s`
+`mgtk.s`
 
-AUX $4000-$851E is the GUI library used for the DeskTop application
-and (presumably) for disk copy and Selector apps (TBD).
+Aux $4000-$851E is the [MouseGraphics ToolKit](../MGTK.md) - a
+GUI library used for the DeskTop application.
 
-Entry point is $4000 with a ProDOS MLI-style calling convention
+Since this resides in Aux memory, DeskTop spends most of its time
+with Aux read/write enabled. The state and logic for rendering
+the desktop and window contents resides in Aux to avoid proxying
+data.
 
 ### "DeskTop" Application
 
@@ -99,21 +110,28 @@ DeskTop application code is in the lower 48k of both Aux and Main:
 main code) are relays, buffers and resources:
 
 * Aux $D000-$ECFF - relays and other aux/main helpers, resources (menus, strings, window)
-* Aux $ED00-$FAFF - hole for data buffer
+* Aux $ED00-$FAFF - hole for data buffer - entries for each icon on desktop/in windows
 * Aux $FB00-$FFFF - more resources (file types, icons)
 
 ($C000-$CFFF is reserved for I/O, and main $BF page and language card is ProDOS)
 
-Interactive commands including disk copy/format/erase, file
-copy/delete, and Selector add/edit/delete/run all dynamically load
-main memory code overlays into one or more of: $800-$1FFF,
-$5000-$6FFF, $7000-$77FF, and $9000-$9FFF. When complete, any original
-code above $4000 is reloaded.
-
 Aux $1B00-$1F7F holds lists of icons, one for the desktop then one for up
 to 8 windows. First byte is a count, up to 127 icon entries. Icon numbers
 map indirectly into a table at $ED00 that holds the type, coordinates, etc.
-Aux $1F80-$1FFF is a map of used/free icon numbers.
+Aux $1F80-$1FFF is a map of used/free icon numbers, as they are reassigned
+as windows are opened and closed.
+
+### Overlays
+
+`ovl1.s` etc
+
+Interactive commands including disk copy/format/erase, file
+copy/delete, and Selector add/edit/delete/run all dynamically load
+main memory code overlays into one or more of: $800-$1BFF,
+$5000-$6FFF, $7000-$77FF, and $9000-$9FFF. When complete, any original
+code above $4000 is reloaded.
+
+## Memory Map
 
 ```
        Main               Aux                 ROM
@@ -141,6 +159,8 @@ $A000 |      +------+    |             |
       |      |      |    |             |
       |      |      |    |             |
 $9000 |      +------+    |             |
+      |             |    |             |
+$8E00 |             |    | Entry Point |
       |             |    |             |
 $8800 |             |    | Font        |
       |             |    |             |
@@ -181,8 +201,8 @@ $1B00 | & Desk Acc  |    +-------------+
       |             |    | Save Area   |
       |             |    |             |
 $0800 +-------------+    +-------------+
-      | Text        |    | Text        |
-      |             |    |             |
+      | Drawing     |    | Drawing     |
+      | Temp Buffer |    | Temp Buffer |
 $0400 +-------------+    +-------------+
       | Invoker     |    |             |
 $0300 +-------------+    +-------------+
@@ -193,3 +213,7 @@ $0100 +-------------+    +-------------+
       | Zero Page   |    | Zero Page   |
 $0000 +-------------+    +-------------+
 ```
+
+The Disk Copy command replaces large chunks of memory and is best
+thought of as a separate application. When exiting, the DeskTop is
+restarted from the beginning.

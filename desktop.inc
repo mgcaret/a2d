@@ -1,11 +1,11 @@
-;;; ==================================================
+;;; ============================================================
 ;;; DeskTop Internals
-;;; ==================================================
+;;; ============================================================
 
 DA_LOAD_ADDRESS := $800
 DA_MAX_SIZE     := $1C00 - DA_LOAD_ADDRESS
 
-;;; ==================================================
+;;; ============================================================
 ;;; Direct Calls (from main memory)
 
 ;;; * = Used by Desk Accessories
@@ -26,14 +26,14 @@ JUMP_TABLE_COPY_TO_BUF  := $4024 ; Copy to buffer
 JUMP_TABLE_COPY_FROM_BUF:= $4027 ; Copy from buffer
 JUMP_TABLE_NOOP         := $402A ; No-Op command (RTS)
 JUMP_TABLE_2D           := $402D ; ??? (Draw type/size/date in non-icon views?)
-JUMP_TABLE_30           := $4030 ; Show alert 0
-JUMP_TABLE_33           := $4033 ; Show alert X
+JUMP_TABLE_ALERT_0      := $4030 ; Show alert 0
+JUMP_TABLE_ALERT_X      := $4033 ; Show alert X
 JUMP_TABLE_LAUNCH_FILE  := $4036 ; Launch file
 JUMP_TABLE_CUR_POINTER  := $4039 ; Changes mouse cursor to pointer *
 JUMP_TABLE_CUR_WATCH    := $403C ; Changes mouse cursor to watch
 JUMP_TABLE_RESTORE_SEG  := $403F ; Restore from dynamic routine
 
-;;; ==================================================
+;;; ============================================================
 ;;; API Calls (from aux memory)
 
 ;;; * = Used by Desk Accessories
@@ -79,21 +79,44 @@ label   := *
 .endmacro
 
 
-;;; ==================================================
+;;; ============================================================
+;;; Relays from Main to Aux (params must be in ZP or LC)
+
+MGTK_RELAY      := $D000
+DESKTOP_RELAY   := $D040
+
+.macro MGTK_RELAY_CALL call, addr
+    .if .paramcount > 1
+        yax_call        MGTK_RELAY, (call), (addr)
+    .else
+        yax_call        MGTK_RELAY, (call), 0
+    .endif
+.endmacro
+
+.macro DESKTOP_RELAY_CALL call, addr
+    .if .paramcount > 1
+        yax_call        DESKTOP_RELAY, (call), (addr)
+    .else
+        yax_call        DESKTOP_RELAY, (call), 0
+    .endif
+.endmacro
+
+
+;;; ============================================================
 ;;; Internals - Windows (paths) and Icons (files)
 
 ;;; NOTE: Some of these are used by Desk Accessories
 
 ;;; These are DeskTop internals, but it appears there is no
 ;;; API for getting the selected file.
-file_selected := $DF21  ; 0 if no selection, 1 otherwise
+selected_file_count := $DF21
 
 path_index := $DF20     ; index of selected window (used to get prefix)
 path_table := $DFB3     ; window address table
 ;;; each entry is 65 bytes long
 ;;;      length-prefixed path string (no trailing /)
 
-file_index := $DF22     ; indexes of selected file (global, not w/in window, up to 127)
+selected_file_list := $DF22     ; indexes of selected file (global, not w/in window, up to 127)
 file_table := $DD9F     ; file address table
 
 ;;; Icon (file/volume) entries - length 27 bytes, maximum of 127
@@ -140,7 +163,7 @@ icon_entry_type_bas     := %00110000
 icon_entry_type_txt     := %01010000
 icon_entry_type_trash   := %01110000
 
-;;; ==================================================
+;;; ============================================================
 ;;; Internals - Default Font
 
 ;;; Used by DAs for window definitions

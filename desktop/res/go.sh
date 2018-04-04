@@ -2,34 +2,48 @@
 
 set -e
 
+function cecho {
+    case $1 in
+        red)    tput setaf 1 ;;
+        green)  tput setaf 2 ;;
+        yellow) tput setaf 3 ;;
+    esac
+    echo -e "$2"
+    tput sgr0
+}
+
 function do_make {
     make "$1" \
-        && (tput setaf 2 ; echo "make $1 good" ; tput sgr0 ) \
-        || (tput setaf 1 ; tput blink ; echo "MAKE $1 BAD" ; tput sgr0 ; return 1)
+        && (cecho green "make $1 good") \
+        || (tput blink ; cecho red "MAKE $1 BAD" ; return 1)
 }
 
 function verify {
-    diff "orig/DESKTOP2_$1" "$1.built" \
-        && (tput setaf 2 ; echo "diff $1 good" ; tput sgr0 ) \
-        || (tput setaf 1 ; tput blink ; echo -e "DIFF $1 BAD" ; tput sgr0 ; return 1)
+    diff "orig/$1" "out/$2" \
+        && (cecho green "diff $2 good" ) \
+        || (tput blink ; cecho red "DIFF $2 BAD" ; return 1)
 }
 
 function stats {
-    echo "$1: "$(../res/stats.pl < "$1")
+    echo "$(printf '%-10s' $1)""$(../res/stats.pl < $1)"
 }
 
 #do_make clean
 do_make all
 
-TARGETS="loader mgtk desktop invoker"
+COMMON="loader mgtk desktop invoker ovl1 ovl1a ovl1b ovl1c ovl2"
+TARGETS="$COMMON ovl34567"
+SOURCES="sys $COMMON ovl3 ovl4 ovl5 ovl6 ovl7"
 
 # Verify original and output match
 echo "Verifying diffs:"
 for t in $TARGETS; do
-    verify $t
+    verify "DESKTOP2_$t" "$t.built"
 done;
+verify "DESKTOP.SYSTEM.SYS" "sys.SYS"
 
-echo "Unidentified symbols:"
-for t in $TARGETS; do
+# Compute stats
+echo "Stats:"
+for t in $SOURCES; do
     stats "$t.s"
 done;

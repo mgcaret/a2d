@@ -2,14 +2,13 @@
 
         .include "apple2.inc"
         .include "../inc/apple2.inc"
-        .include "../inc/auxmem.inc"
         .include "../inc/prodos.inc"
         .include "../macros.inc"
 
 DESKTOP_INIT    := $0800        ; init location
 L7ECA           := $7ECA        ; ???
 
-;;; ==================================================
+;;; ============================================================
 ;;; Patch self in as ProDOS QUIT routine (LCBank2 $D100)
 ;;; and invoke QUIT. Note that only $200 bytes are copied.
 
@@ -33,16 +32,10 @@ loop:   lda     src,y
 
         MLI_CALL QUIT, quit_params
 
-.proc quit_params
-params: .byte   4
-        .byte   0
-        .word   0
-        .byte   0
-        .word   0
-.endproc
+        DEFINE_QUIT_PARAMS quit_params
 .endproc ; install_as_quit
 
-;;; ==================================================
+;;; ============================================================
 ;;; New QUIT routine. Gets relocated to $1000 by ProDOS before
 ;;; being executed.
 
@@ -60,34 +53,13 @@ reinstall_flag:                 ; set once prefix saved and reinstalled
 splash_string:
         PASCAL_STRING "Loading Apple II DeskTop"
 
-pathname:
+filename:
         PASCAL_STRING "DeskTop2"
 
-.proc read_params
-params: .byte   4
-ref_num:.byte   0
-buffer: .addr   $1E00           ; so the $200 byte mark ends up at $2000
-request:.word   $0400
-trans:  .word   0
-.endproc
-
-.proc close_params
-params: .byte   1
-ref_num:.byte   0               ; close all
-.endproc
-
-.proc prefix_params
-params: .byte   1
-buffer: .addr   prefix_buffer
-.endproc
-
-.proc open_params
-params: .byte   3
-path:   .addr   pathname
-buffer: .addr   $1A00
-ref_num:.byte   0
-.endproc
-
+        DEFINE_READ_PARAMS read_params, $1E00, $400 ; so the $200 byte mark ends up at $2000
+        DEFINE_CLOSE_PARAMS close_params
+        DEFINE_SET_PREFIX_PARAMS prefix_params, prefix_buffer
+        DEFINE_OPEN_PARAMS open_params, filename, $1A00
 
 start:  lda     ROMIN2
 
@@ -234,7 +206,7 @@ prefix_buffer:
 
 .endproc ; quit_routine
 
-;;; ==================================================
+;;; ============================================================
 ;;; This chunk is invoked at $2000 after the quit handler has been invoked
 ;;; and updated itself. Using the segment_*_tables below, this loads the
 ;;; DeskTop application into various parts of main, aux, and bank-switched
@@ -248,33 +220,14 @@ prefix_buffer:
 
         jmp     start
 
-.proc open_params
-params: .byte   3
-path:   .addr   pathname
-buffer: .addr   $3000
-ref_num:.byte   0
-.endproc
+        DEFINE_OPEN_PARAMS open_params, filename, $3000
 
-.proc read_params
-params: .byte   4
-ref_num:.byte   0
-buffer: .addr   0
-request:.word   0
-trans:  .word   0
-.endproc
+        DEFINE_READ_PARAMS read_params, 0, 0
 
-.proc close_params
-params: .byte   1
-ref_num:.byte   0
-.endproc
+        DEFINE_CLOSE_PARAMS close_params
+        DEFINE_SET_MARK_PARAMS set_mark_params, $580 ; This many bytes before the good stuff.
 
-.proc set_mark_params
-params: .byte   2
-ref_num:.byte   0
-pos:    .faraddr $580           ; This many bytes before the good stuff.
-.endproc
-
-pathname:
+filename:
         PASCAL_STRING "DeskTop2"
 
 ;;; Consecutive segments are loaded, |size| bytes are loaded at |addr|
@@ -349,8 +302,8 @@ loop:   lda     segment_num
 continue:
         asl     a
         tax
-        copy16  segment_addr_table,x, read_params::buffer
-        copy16  segment_size_table,x, read_params::request
+        copy16  segment_addr_table,x, read_params::data_buffer
+        copy16  segment_size_table,x, read_params::request_count
         php
         sei
         MLI_CALL READ, read_params
@@ -394,7 +347,7 @@ segment_num:  .byte   0
         tax
         lda     segment_dest_table+1,x
         sta     dst+1
-        lda     read_params::buffer+1
+        lda     read_params::data_buffer+1
         sta     src+1
         clc
         adc     segment_size_table+1,x
@@ -435,7 +388,7 @@ max_page:
         tax
         lda     segment_dest_table+1,x
         sta     dst+1
-        lda     read_params::buffer+1
+        lda     read_params::data_buffer+1
         sta     src+1
         clc
         adc     segment_size_table+1,x
@@ -463,7 +416,7 @@ max_page:
         .res    $2200 - *,0
 .endproc ; install_segments
 
-;;; ==================================================
+;;; ============================================================
 ;;; Not sure where this could be invoked from
 
 .proc dump_screen
@@ -476,7 +429,8 @@ max_page:
         ESC     := $1B
 
         hbasl := $6
-        screen_width := 560
+        screen_width  := 560
+        screen_height := 192
 
         ;; Test for OpenApple+SolidApple+P
         pha
@@ -614,7 +568,7 @@ loop:   jsr     send_row
 
         lda     y_coord
         sta     y_row
-        cmp     #192            ; screen height in pixels
+        cmp     #screen_height
         bcc     loop
 
         ;; Finish up

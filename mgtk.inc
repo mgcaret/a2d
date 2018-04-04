@@ -1,6 +1,6 @@
-;;; ==================================================
-;;; Mouse Graphics Tool Kit (w/ Graphics Primitives)
-;;; ==================================================
+;;; ============================================================
+;;; MouseGraphics ToolKit (w/ Graphics Primitives)
+;;; ============================================================
 
 .scope MGTK
 
@@ -8,9 +8,9 @@ MLI     := $4000
         ;; MLI-style call (jsr MLI ; .byte call ; .addr params)
         ;; Call from AUX (RAMRDON/RAMWRTON)
 
-;;; ==================================================
+;;; ============================================================
 ;;; Graphics Primitives
-;;; ==================================================
+;;; ============================================================
 
 ;;; Point record:
 ;;;
@@ -22,7 +22,7 @@ MLI     := $4000
 ;;; .word       x1
 ;;; .word       y1
 ;;; .word       x2
-;;; .word       y3
+;;; .word       y2
 
 ;;; MapInfo record:
 ;;;
@@ -63,13 +63,14 @@ MLI     := $4000
 ;;; .res N      row0right       bits (double-width only)
 ;;; ...
 
-NoOp            := $00  ; No-op
-        ;; (input length 0 bytes)
+NoOp            := $00          ; No-op
+;;; (no parameters)
 
 ;;; --------------------------------------------------
 ;;; Initialization Commands
 
 InitGraf        := $01
+;;; (no parameters)
 
 SetSwitches     := $02          ; Configure display switches
 ;;; .byte       flags           bit 0=hires, 1=page2, 2=mixed, 3=text
@@ -156,15 +157,15 @@ TextWidth       := $18          ; Measure the width of a string in pixels
 ;;; .byte       length
 ;;; .word       width           (out) result in pixels
 
-DrawText        := $19          ; Drawn at last SET_POS as left, baseline
+DrawText        := $19          ; Drawn at penpos as left, baseline
 ;;; .addr       data
 ;;; .byte       length
 
 ;;; --------------------------------------------------
 ;;; Utility Commands
 
-SetZP1          := $1A  ; Configure lower half of ZP usage by API (speed vs. convenience)
-SetZP2          := $1B  ; Configure upper half ZP usage by API (speed vs. convenience)
+SetZP1          := $1A          ; Configure lower half of ZP usage by API (speed vs. convenience)
+SetZP2          := $1B          ; Configure upper half ZP usage by API (speed vs. convenience)
 ;;; .byte       preserve        0=stash/no auto restore; 1=restore now and onward
 
 Version         := $1C          ; Get toolkit version
@@ -174,9 +175,9 @@ Version         := $1C          ; Get toolkit version
 ;;; .byte       (out) status
 ;;; .word       (out) number
 
-;;; ==================================================
-;;; Mouse Graphics Tool Kit Calls
-;;; ==================================================
+;;; ============================================================
+;;; MouseGraphics ToolKit Calls
+;;; ============================================================
 
 ;;; --------------------------------------------------
 ;;; Initialization Calls
@@ -286,9 +287,9 @@ SetKeyEvent     := $2E          ; If set, keypresses are ignored by Tool Kit
 ;;;
 ;;; Menu record:
 ;;;
-;;; .word       count           Number of items in menu
-;;; (array of...)
+;;; .byte       count           Number of items in menu
 ;;; .res  5     reserved        Reserved
+;;; (array of...)
 ;;; .byte       options         bit 0=OA, 1=SA, 2=mark, 5=check, 6=filler, 7=disabled
 ;;; .byte       mark_char       Custom mark character if mark option set
 ;;; .byte       char1           ASCII code of shortcut #1 (e.g. uppercase B); or 0
@@ -386,7 +387,7 @@ BeginUpdate     := $3E          ; Respond to update event for window
 ;;; .byte       window_id
 
 EndUpdate       := $3F
-;;; (no paramters)
+;;; (no parameters)
 
 FindWindow      := $40
 ;;; .word       mousex          screen coordinates
@@ -406,7 +407,6 @@ TrackGoAway     := $43
 ;;; .byte       ??              (out)
 
 DragWindow      := $44
-;;; (input length 5 bytes)
 ;;; .byte       window_id
 ;;; .word       dragx           mouse coords
 ;;; .word       dragy
@@ -418,14 +418,14 @@ GrowWindow      := $45
 ;;; .word       mousey
 ;;; .byte       itgrew          (out) 0 = no change, 1 = moved
 
-ScreenToWindow  := $46          ; Map screen coords to client coords
+ScreenToWindow  := $46          ; Map screen coords to content coords
 ;;; .byte       window_id
 ;;; .word       screenx
 ;;; .word       screeny
 ;;; .word       windowx         (out)
 ;;; .word       windowy         (out)
 
-WindowToScreen  := $47
+WindowToScreen  := $47          ; Map content coords to screen coords
 ;;; .byte       window_id
 ;;; .word       windowx
 ;;; .word       windowy
@@ -466,7 +466,7 @@ ActivateCtl     := $4C          ; Activate/deactivate scroll bar
 ;;; $4E ???
 ;;; (input length: 2 bytes)
 
-;;; ==================================================
+;;; ============================================================
 ;;; Graphics Primitives Constants
 
 ;;; Used in GetWinPort / SetPortBits
@@ -493,8 +493,8 @@ colormask_or       := $00
 textbg_black       := $00
 textbg_white       := $7F
 
-;;; ==================================================
-;;; Mouse Graphics Tool Kit Constants
+;;; ============================================================
+;;; MouseGraphics ToolKit Constants
 
 ;;; Used in GetEvent
 event_kind_no_event        := 0    ; No mouse or keypress
@@ -570,7 +570,7 @@ inrect_outside          := $00
 inpoly_inside           := $80
 inpoly_outside          := $00
 
-;;; ==================================================
+;;; ============================================================
 ;;; Offsets
 
 grafport_offset_viewloc            :=  0
@@ -607,9 +607,52 @@ winfo_offset_port               := 20
 winfo_offset_nextwinfo          := 56
 winfo_size                      := 58
 
+menu_size                       := 12
+
+menu_item_size                  := 6
+
+short_event_size                := 4        ; events that don't have mouse coordinates
+event_size                      := 5        ; any kind of event
+
+cursor_height                   := 12
+cursor_width                    := 2
+
+cursor_offset_mask              := cursor_width * cursor_height
+cursor_offset_hotspot           := 2 * cursor_width * cursor_height
+cursor_size                     := cursor_offset_hotspot + 2
+
+font_offset_fonttype            := 0
+font_offset_lastchar            := 1
+font_offset_height              := 2
+font_offset_charwidth           := 3
+
+
+;;; Errors
+
+error_empty_object := $81
+error_bad_object := $82
+error_font_too_big := $83
+
+error_invalid_op_sys := $90
+error_no_mouse := $92
+error_invalid_irq_setting := $93
+error_invalid_hook := $94
+error_desktop_not_initialized := $95
+error_irq_in_use := $97
+error_invalid_event := $98
+error_event_queue_full := $99
+error_menu_not_found := $9A
+error_menu_item_not_found := $9B
+error_insufficient_savebehind_area := $9C
+error_window_already_exists := $9D
+error_window_id_required := $9E
+error_window_not_found := $9F
+error_no_active_window := $A0
+
+
 .endscope ; MGTK
 
-;;; ==================================================
+;;; ============================================================
 ;;; Macros
 
 ;;; Call an MGTK entry point:

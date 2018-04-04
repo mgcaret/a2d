@@ -19,13 +19,20 @@ function do_make {
 }
 
 function verify {
-    diff "orig/$1.bin" "$1.F1" \
+    diff "orig/$1.bin" "out/$1.\$F1" \
         && (cecho green "diff $1 good" ) \
         || (tput blink ; cecho red "DIFF $1 BAD" ; return 1)
 }
 
 function stats {
-    echo "$1: "$(../res/stats.pl < "$1")
+    echo "$(printf '%-20s' $1)""$(../res/stats.pl < $1)"
+}
+
+function mount {
+    uppercase=$(echo "$1" | tr /a-z/ /A-Z/)
+    cp "out/$1" "mount/$uppercase" \
+        && (cecho green "mounted $uppercase" ) \
+        || (cecho red "failed to mount $uppercase" ; return 1)
 }
 
 #do_make clean
@@ -34,18 +41,17 @@ do_make all
 # Verify original and output match
 echo "Verifying diffs:"
 cecho yellow "calculator N/A - patches applied"
-verify "show_text_file"
+verify "show.text.file"
 verify "date"
 verify "puzzle"
 
-echo "Unidentified symbols:"
+# Compute stats
+echo "Stats:"
 stats "calculator.s"
-stats "show_text_file.s"
+stats "show.text.file.s"
 stats "date.s"
 stats "puzzle.s"
 
-cat show_image_file.F1 > mount/SHOW.IMAGE.FILE.\$F1 \
-    && echo "Updated mountable file (SIF)"
-
-#cat calc_fixed.F1 > mount/TEST.\$F1 \
-#    && echo "Updated mountable file (Test)"
+# Mountable directory
+echo "Copying files to mount/"
+mount 'show.image.file.$F1'

@@ -2,7 +2,6 @@
 
         .include "apple2.inc"
         .include "../inc/apple2.inc"
-        .include "../inc/auxmem.inc"
         .include "../inc/prodos.inc"
 
         .include "../mgtk.inc"
@@ -15,7 +14,7 @@
 
         .res    36, 0
 
-;;; ==================================================
+;;; ============================================================
 ;;; Copy the DA to AUX and invoke it
 
 stash_stack:  .byte   0
@@ -44,7 +43,7 @@ stash_stack:  .byte   0
         jmp     XFER
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Set up / tear down
 
 .proc exit_da
@@ -67,7 +66,7 @@ stash_stack:  .byte   0
 
         da_window_id := 51
 
-;;; ==================================================
+;;; ============================================================
 ;;; Redraw the screen (all windows) after a event_kind_drag
 
 .proc redraw_screen
@@ -106,7 +105,7 @@ skip:   lda     #0
         sizeof_routine := * - routine
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; ???
 
         screen_height := 192
@@ -133,7 +132,7 @@ check_window_pos:
 
 :       rts
 
-;;; ==================================================
+;;; ============================================================
 ;;; Param Blocks
 
         ;; following memory space is re-used so x/y overlap
@@ -506,7 +505,7 @@ piece16:
         .byte px(%0000000),px(%0000000),px(%0000000),px(%0000000)
 
 
-.proc fill_rect_params
+.proc paintrect_params
         DEFINE_RECT 1, 0, default_width, default_height
 .endproc
 
@@ -540,7 +539,7 @@ piece16:
         .byte   $00
 
 ;; line across top of puzzle (bitmaps include bottom edges)
-.proc set_pos_params
+.proc moveto_params
 xcoord: .word   5
 ycoord: .word   2
 .endproc
@@ -645,7 +644,7 @@ textfont:   .addr   DEFAULT_FONT
 name:   PASCAL_STRING "Puzzle"
 
 
-;;; ==================================================
+;;; ============================================================
 ;;; Create the window
 
 .proc create_window
@@ -697,7 +696,7 @@ ploop:  lda     position_table+1,y
         ; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Input loop and processing
 
 .proc input_loop
@@ -772,12 +771,12 @@ check_key:
         lda     event_params::modifiers
         bne     :+
         lda     event_params::key
-        cmp     #KEY_ESCAPE
+        cmp     #CHAR_ESCAPE
         beq     destroy
 :       rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Map click to piece x/y
 
 .proc find_click_piece
@@ -852,7 +851,7 @@ nope:   clc
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Process piece click
 
         hole_piece := 12
@@ -861,13 +860,13 @@ nope:   clc
 
         lda     #0
         ldy     hole_y
-        beq     L0FC9
-L0FC3:  clc
+        beq     found
+:       clc
         adc     #4
         dey
-        bne     L0FC3
+        bne     :-
 
-L0FC9:  sta     draw_rc
+found:  sta     draw_rc
         clc
         adc     hole_x
         tay
@@ -973,15 +972,15 @@ after_click:
         rts                     ; ???
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Clear the background
 
 draw_window:
         MGTK_CALL MGTK::SetPattern, pattern_speckles
-        MGTK_CALL MGTK::PaintRect, fill_rect_params
+        MGTK_CALL MGTK::PaintRect, paintrect_params
         MGTK_CALL MGTK::SetPattern, pattern_black
 
-        MGTK_CALL MGTK::MoveTo, set_pos_params
+        MGTK_CALL MGTK::MoveTo, moveto_params
         MGTK_CALL MGTK::Line, line_params
 
         jsr     draw_all
@@ -992,7 +991,7 @@ draw_window:
         MGTK_CALL MGTK::SetPort, setport_params
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 .proc save_zp
         ldx     #$00
@@ -1015,7 +1014,7 @@ loop:   lda     saved_zp,x
 saved_zp:
         .res    256, 0
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw pieces
 
 .proc draw_all
@@ -1081,7 +1080,7 @@ loop:   tya
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Play sound
 
 .proc play_sound
@@ -1102,7 +1101,7 @@ delay2: dey
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Puzzle complete?
 
         ;; Returns with carry set if puzzle complete
@@ -1174,7 +1173,7 @@ nope:   clc
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Find hole piece
 
 .proc find_hole

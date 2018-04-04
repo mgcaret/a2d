@@ -1,9 +1,8 @@
         .setcpu "6502"
 
         .include "apple2.inc"
-        .include "../inc/ascii.inc"
+        .include "../inc/apple2.inc"
         .include "../inc/prodos.inc"
-        .include "../inc/auxmem.inc"
 
         .include "../mgtk.inc"
         .include "../desktop.inc" ; get/clear selection, font
@@ -74,7 +73,7 @@ loop:   lda     call_main_template,x
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; ProDOS MLI calls
 
 .proc open_file
@@ -122,7 +121,7 @@ loop:   lda     call_main_template,x
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 ;;; Copies param blocks from Aux to Main
 .proc copy_params_aux_to_main
@@ -159,41 +158,16 @@ params_start:
 
 ;;; ProDOS MLI param blocks
 
-.proc open_params
-        .byte   3               ; param_count
-        .addr   pathname        ; pathname
-        .addr   $0C00           ; io_buffer
-ref_num:.byte   0               ; ref_num
-.endproc
+        DEFINE_OPEN_PARAMS open_params, pathbuff, $C00
 
 default_buffer := $1200
 
-.proc read_params
-        .byte   4               ; param_count
-ref_num:.byte   0               ; ref_num
-buffer: .addr   default_buffer  ; data_buffer
-        .word   $100            ; request_count
-        .word   0               ; trans_count
-.endproc
+        DEFINE_READ_PARAMS read_params, default_buffer, $100
+        DEFINE_GET_EOF_PARAMS get_eof_params
+        DEFINE_SET_MARK_PARAMS set_mark_params, 0
+        DEFINE_CLOSE_PARAMS close_params
 
-.proc get_eof_params
-        .byte   2               ; param_count
-ref_num:.byte   0               ; ref_num
-        .byte   0,0,0           ; EOF (lo, mid, hi)
-.endproc
-
-.proc set_mark_params
-        .byte   2               ; param_count
-ref_num:.byte   0               ; ref_num
-        .faraddr 0              ; position (lo, mid, hi)
-.endproc
-
-.proc close_params
-        .byte   1               ; param_count
-ref_num:.byte   0               ; ref_num
-.endproc
-
-.proc pathname                 ; 1st byte is length, rest is full path
+.proc pathbuff                 ; 1st byte is length, rest is full path
 length: .byte   $00
 data:   .res    64, $00
 .endproc
@@ -353,14 +327,14 @@ maprect:        DEFINE_RECT 0, 0, default_width, default_height
 
         ;; Check that an icon is selected
         lda     #0
-        sta     pathname::length
-        lda     file_selected
+        sta     pathbuff::length
+        lda     selected_file_count
         beq     abort           ; some file properties?
         lda     path_index      ; prefix index in table
         bne     :+
 abort:  rts
 
-        ;; Copy path (prefix) into pathname buffer.
+        ;; Copy path (prefix) into pathbuff buffer.
 :       src := $06
         dst := $08
 
@@ -373,20 +347,20 @@ abort:  rts
         inc     src
         bne     :+
         inc     src+1
-:       copy16  #(pathname::data), dst
-        jsr     copy_pathname   ; copy x bytes (src) to (dst)
+:       copy16  #(pathbuff::data), dst
+        jsr     copy_pathbuff   ; copy x bytes (src) to (dst)
 
         ;; Append separator.
         lda     #'/'
         ldy     #0
         sta     (dst),y
-        inc     pathname::length
+        inc     pathbuff::length
         inc     dst
         bne     :+
         inc     dst+1
 
         ;; Get file entry.
-:       lda     file_index      ; file index in table
+:       lda     selected_file_list      ; file index in table
         asl     a               ; (since table is 2 bytes wide)
         tax
         copy16  file_table,x, src
@@ -423,7 +397,7 @@ abort:  rts
         sta     src
         bcc     :+
         inc     src+1
-:       jsr     copy_pathname   ; copy x bytes (src) to (dst)
+:       jsr     copy_pathbuff   ; copy x bytes (src) to (dst)
 
         ;; Clear selection (why???)
         copy16  #JUMP_TABLE_CLEAR_SEL, call_main_addr
@@ -431,12 +405,12 @@ abort:  rts
 
         jmp     open_file_and_init_window
 
-.proc copy_pathname             ; copy x bytes from src to dst
+.proc copy_pathbuff             ; copy x bytes from src to dst
         ldy     #0              ; incrementing path length and dst
 loop:   lda     (src),y
         sta     (dst),y
         iny
-        inc     pathname::length
+        inc     pathbuff::length
         dex
         bne     loop
         tya
@@ -484,7 +458,7 @@ loop:   lda     font_width_table - 1,x
         ;; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Main Input Loop
 
 input_loop:
@@ -524,7 +498,7 @@ input_loop:
 title:  jsr     on_title_bar_click
         jmp     input_loop
 
-;;; ==================================================
+;;; ============================================================
 ;;; Close Button
 
 .proc on_close_click
@@ -537,7 +511,7 @@ title:  jsr     on_title_bar_click
         rts                     ; exits input loop
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Resize Handle
 
 ;;; This is dead code (no resize handle!) and may be buggy
@@ -591,7 +565,7 @@ enable: ora     #MGTK::scroll_option_active           ; enable scroll
         jmp     finish_resize
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Client Area
 
 ;;; Non-title (client) area clicked
@@ -607,7 +581,7 @@ enable: ora     #MGTK::scroll_option_active           ; enable scroll
 end:    rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Vertical Scroll Bar
 
 .proc on_vscroll_click
@@ -728,7 +702,7 @@ loop:   inx
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Horizontal Scroll Bar
 ;;; (Unused in STF DA, so most of this is speculation)
 
@@ -821,7 +795,7 @@ store:  sta     winfo::hthumbpos
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; UI Helpers
 
         ;; Used at start of thumb event_kind_drag
@@ -936,7 +910,7 @@ end:    rts
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Content Rendering
 
 .proc draw_content
@@ -945,10 +919,10 @@ end:    rts
         jsr     assign_fixed_font_width_table_if_needed
         jsr     set_file_mark
         lda     #<default_buffer
-        sta     read_params::buffer
+        sta     read_params::data_buffer
         sta     $06
         lda     #>default_buffer
-        sta     read_params::buffer+1
+        sta     read_params::data_buffer+1
         sta     $07
         lda     #0
         sta     L0945
@@ -1011,7 +985,7 @@ L0ED7:  jsr     restore_proportional_font_table_if_needed
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc L0EDB                     ; ???
         copy16  #506, L095B
@@ -1020,7 +994,7 @@ L0ED7:  jsr     restore_proportional_font_table_if_needed
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc find_text_run
         lda     #$FF
@@ -1046,7 +1020,7 @@ more:   ldy     drawtext_params::textlen
         and     #$7F            ; clear high bit
         sta     ($06),y
         inc     L0945
-        cmp     #ASCII_RETURN
+        cmp     #CHAR_RETURN
         beq     finish_text_run
         cmp     #' '            ; space character
         bne     :+
@@ -1055,7 +1029,7 @@ more:   ldy     drawtext_params::textlen
         lda     L0945
         sta     L0946
         pla
-:       cmp     #ASCII_TAB
+:       cmp     #CHAR_TAB
         bne     :+
         jmp     handle_tab
 
@@ -1090,15 +1064,15 @@ more:   ldy     drawtext_params::textlen
 finish_text_run:  jsr     draw_text_run
         ldy     drawtext_params::textlen
         lda     ($06),y
-        cmp     #ASCII_TAB
+        cmp     #CHAR_TAB
         beq     tab
-        cmp     #ASCII_RETURN
+        cmp     #CHAR_RETURN
         bne     :+
 tab:    inc     drawtext_params::textlen
 :       clc
         rts
 
-;;; ==================================================
+;;; ============================================================
 
 L0F9B:  .byte   0
 run_width:  .word   0
@@ -1140,7 +1114,7 @@ times70:.word   70
         .word   490
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Draw a line of content
 
 .proc draw_text_run
@@ -1154,7 +1128,7 @@ times70:.word   70
 end:    rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc ensure_page_buffered
         lda     drawtext_params::textptr+1
@@ -1174,17 +1148,17 @@ loop:   lda     $1300,y
 read:   lda     #0
         sta     L0945
         jsr     read_file_page
-        lda     read_params::buffer+1
+        lda     read_params::data_buffer+1
         cmp     #>default_buffer
         bne     :+
-        inc     read_params::buffer+1
+        inc     read_params::data_buffer+1
 :       rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc read_file_page
-        copy16  read_params::buffer, store+1
+        copy16  read_params::data_buffer, store+1
 
         lda     #' '            ; fill buffer with spaces
         ldx     #0
@@ -1204,7 +1178,7 @@ store:  sta     default_buffer,x         ; self-modified
         sta     DESTINATIONLO
         lda     #$FF
         sta     ENDLO
-        lda     read_params::buffer+1
+        lda     read_params::data_buffer+1
         sta     DESTINATIONHI
         sta     STARTHI
         sta     ENDHI
@@ -1237,7 +1211,7 @@ end:    rts
         ;; fall through
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc calc_line_position
         copy16  winfo::maprect::y2, L0965
@@ -1263,7 +1237,7 @@ loop:   lda     L0966
 end:    rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 
 .proc div_by_16                 ; input in $06/$07, output in a
         ldx     #4
@@ -1295,7 +1269,7 @@ loop:   clc
         rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Restore the font glyph width table when switching
 ;;; back to proportional mode.
 
@@ -1324,7 +1298,7 @@ loop:   clc
 done:   rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Overwrite the font glyph width table (with 7s)
 ;;; when switching to fixed width mode.
 
@@ -1339,7 +1313,7 @@ loop:   sta     font_width_table - 1,x
 end:    rts
 .endproc
 
-;;; ==================================================
+;;; ============================================================
 ;;; Title Bar (Proportional/Fixed mode button)
 
 .proc on_title_bar_click
